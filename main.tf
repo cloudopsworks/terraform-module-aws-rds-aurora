@@ -9,7 +9,7 @@ locals {
 
 # Provisions RDS instance only if rds_provision=true
 resource "aws_rds_cluster" "this" {
-  cluster_identifier          = "rds-cl-${var.settings.name_prefix}-${local.system_name}"
+  cluster_identifier          = "rds-${var.settings.name_prefix}-${local.system_name}"
   engine                      = var.settings.engine_type
   engine_version              = var.settings.engine_version
   availability_zones          = var.settings.availability_zones
