@@ -15,3 +15,9 @@ variable "vpc" {
   type        = any
   default     = {}
 }
+
+variable "security_groups" {
+  description = "Security groups for RDS instance"
+  type        = any
+  default     = {}
+}

@@ -9,3 +9,7 @@ output "rds_password" {
   value       = random_password.randompass.result
   sensitive   = true
 }
+
+output "rds_security_group_ids" {
+  value = local.security_group_ids
+}

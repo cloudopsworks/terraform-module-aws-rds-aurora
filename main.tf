@@ -3,6 +3,9 @@
 #            On GitHub: https://github.com/cloudopsworks
 #            Distributed Under Apache v2.0 License
 #
+locals {
+  rds_port = try(var.settings.port, 5432)
+}
 
 # Provisions RDS instance only if rds_provision=true
 resource "aws_rds_cluster" "this" {
@@ -17,11 +20,11 @@ resource "aws_rds_cluster" "this" {
   preferred_backup_window     = try(var.settings.backup.window, "01:00-03:00")
   copy_tags_to_snapshot       = try(var.settings.backup.copy_tags, true)
   apply_immediately           = try(var.settings.apply_immediately, true)
-  vpc_security_group_ids      = var.vpc.security_group_ids
+  vpc_security_group_ids      = local.security_group_ids
   storage_encrypted           = try(var.settings.storage.encryption.enabled, false)
   db_subnet_group_name        = var.vpc.subnet_group
   kms_key_id                  = try(var.settings.storage.encryption.kms_key_id, null)
-  port                        = try(var.settings.port, 5432)
+  port                        = local.rds_port
   final_snapshot_identifier   = "rds-${var.settings.name_prefix}-${local.system_name}-cluster-final-snap"
   deletion_protection         = try(var.settings.deletion_protection, true)
   allow_major_version_upgrade = try(var.settings.allow_upgrade, true)
