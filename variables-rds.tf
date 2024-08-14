@@ -9,3 +9,9 @@ variable "settings" {
   type        = any
   default     = {}
 }
+
+variable "vpc" {
+  description = "VPC for RDS instance"
+  type        = any
+  default     = {}
+}

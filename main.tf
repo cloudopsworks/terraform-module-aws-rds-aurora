@@ -17,9 +17,9 @@ resource "aws_rds_cluster" "this" {
   preferred_backup_window     = try(var.settings.backup.window, "01:00-03:00")
   copy_tags_to_snapshot       = try(var.settings.backup.copy_tags, true)
   apply_immediately           = try(var.settings.apply_immediately, true)
-  vpc_security_group_ids      = var.settings.security_group_ids
+  vpc_security_group_ids      = var.vpc.security_group_ids
   storage_encrypted           = try(var.settings.storage.encryption.enabled, false)
-  db_subnet_group_name        = var.settings.subnet_group_name
+  db_subnet_group_name        = var.vpc.subnet_group
   kms_key_id                  = try(var.settings.storage.encryption.kms_key_id, null)
   port                        = try(var.settings.port, 5432)
   final_snapshot_identifier   = "rds-${var.settings.name_prefix}-${local.system_name}-cluster-final-snap"
