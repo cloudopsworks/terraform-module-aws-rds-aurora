@@ -10,6 +10,13 @@ locals {
     aws_security_group.this[*].id,
     data.aws_security_group.this[*].id
   )
+  allow_security_groups_names = {
+    for sg in try(var.security_groups.allow_security_groups, []) : sg => sg
+    if local.create_sg
+  }
+  allow_security_groups = {
+    for k, v in local.allow_security_groups_names : k => data.aws_security_group.allow_sg[k].id
+  }
 }
 
 resource "aws_security_group" "this" {
@@ -43,11 +50,14 @@ resource "aws_vpc_security_group_ingress_rule" "this_cidr" {
   tags              = local.all_tags
 }
 
+
+data "aws_security_group" "allow_sg" {
+  for_each = local.allow_security_groups_names
+  name     = each.value
+}
+
 resource "aws_vpc_security_group_ingress_rule" "this_sg" {
-  for_each = {
-    for sg in try(var.security_groups.allow_security_groups, []) : sg => sg
-    if local.create_sg
-  }
+  for_each                     = local.allow_security_groups
   from_port                    = local.rds_port
   to_port                      = local.rds_port
   ip_protocol                  = "TCP"
