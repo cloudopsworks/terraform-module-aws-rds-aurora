@@ -13,8 +13,8 @@ resource "aws_rds_cluster" "this" {
   engine                      = var.settings.engine_type
   engine_version              = var.settings.engine_version
   availability_zones          = var.settings.availability_zones
-  database_name               = "cluster_db"
-  master_username             = "cluster_root"
+  database_name               = try(var.settings.database_name, "cluster_db")
+  master_username             = try(var.settings.master_username, "cluster_root")
   master_password             = random_password.randompass.result
   backup_retention_period     = try(var.settings.backup.retention_period, 5)
   preferred_backup_window     = try(var.settings.backup.window, "01:00-03:00")
