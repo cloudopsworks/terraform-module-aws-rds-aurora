@@ -35,6 +35,9 @@ resource "aws_security_group" "this" {
       Name = "rds-${var.settings.name_prefix}-${local.system_name}-sg"
     })
   )
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "this_cidr" {
