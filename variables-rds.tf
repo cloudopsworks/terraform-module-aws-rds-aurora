@@ -15,7 +15,7 @@
 #   engine_type: "aurora-postgresql"
 #   engine_version: "10.7"
 #   availability_zones: ["us-east-1a", "us-east-1b"]
-#   port: 5432
+#   rds_port: 5432
 #   apply_immediately: true
 #   encryption:
 #     enabled: true
