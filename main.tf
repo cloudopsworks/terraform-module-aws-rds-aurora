@@ -20,7 +20,7 @@ resource "aws_rds_cluster" "this" {
   cluster_identifier          = "rds-${var.settings.name_prefix}-${local.system_name}"
   engine                      = var.settings.engine_type
   engine_version              = var.settings.engine_version
-  global_cluster_identifier   = var.settings.global_cluster.create ? aws_rds_global_cluster.this[0].id : try(var.settings.global_cluster.id, null)
+  global_cluster_identifier   = try(var.settings.global_cluster.create, false) ? aws_rds_global_cluster.this[0].id : try(var.settings.global_cluster.id, null)
   availability_zones          = var.settings.availability_zones
   database_name               = try(var.settings.database_name, "cluster_db")
   master_username             = try(var.settings.master_username, "cluster_root")
