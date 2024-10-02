@@ -36,3 +36,15 @@ output "rds_cluster_port" {
 output "rds_cluster_master_username" {
   value = aws_rds_cluster.this.master_username
 }
+
+output "rds_cluster_instance_ids" {
+  value = aws_rds_cluster_instance.this[*].id
+}
+
+output "rds_cluster_instance_endpoints" {
+  value = aws_rds_cluster_instance.this[*].endpoint
+}
+
+output "rds_global_cluster_id" {
+  value = aws_rds_global_cluster.this[*].id
+}
