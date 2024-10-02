@@ -8,6 +8,10 @@
 
 ##  YAML Input Format
 # settings:
+#   # Global Cluster
+#   global_cluster:
+#     create: true | false
+#     id: "arn:aws:rds:us-east-1:123456789012:global-cluster:mydb" # Optional conflicts with create = true
 #   # Cluster general
 #   name_prefix: "mydb"
 #   database_name: "mydb"
