@@ -4,7 +4,9 @@
 #            Distributed Under Apache v2.0 License
 #
 
-## YAML Input Format
+
+
+##  YAML Input Format
 # settings:
 #   # Cluster general
 #   name_prefix: "mydb"
@@ -27,7 +29,6 @@
 #   # Instance specific
 #   replicas: 2
 #   instance_size: "db.r5.large"
-
 variable "settings" {
   description = "Settings for RDS instance"
   type        = any
