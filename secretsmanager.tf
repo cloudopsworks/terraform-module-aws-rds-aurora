@@ -18,7 +18,7 @@ locals {
 # Secrets saving
 resource "aws_secretsmanager_secret" "dbuser" {
   depends_on = [aws_rds_cluster.this]
-  name       = "${local.secret_store_path}/${var.settings.engine_type}/${local.db_name}/master_username"
+  name       = "${local.secret_store_path}/${aws_rds_cluster.this.cluster_identifier}/${var.settings.engine_type}/${local.db_name}/master_username"
   tags       = local.all_tags
 }
 
@@ -29,7 +29,7 @@ resource "aws_secretsmanager_secret_version" "dbuser" {
 
 resource "aws_secretsmanager_secret" "randompass" {
   depends_on = [aws_rds_cluster.this]
-  name       = "${local.secret_store_path}/${var.settings.engine_type}/${local.db_name}/master_password"
+  name       = "${local.secret_store_path}/${aws_rds_cluster.this.cluster_identifier}/${var.settings.engine_type}/${local.db_name}/master_password"
   tags       = local.all_tags
 }
 
@@ -40,7 +40,7 @@ resource "aws_secretsmanager_secret_version" "randompass" {
 
 # Secrets saving
 resource "aws_secretsmanager_secret" "rds" {
-  name = "${local.secret_store_path}/${var.settings.engine_type}/${local.db_name}/rds-credentials"
+  name = "${local.secret_store_path}/${var.settings.engine_type}/${aws_rds_cluster.this.cluster_identifier}/${local.db_name}/rds-credentials"
   tags = local.all_tags
 }
 
