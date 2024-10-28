@@ -4,7 +4,9 @@
 #            Distributed Under Apache v2.0 License
 #
 locals {
-  rds_port = try(var.settings.port, 5432)
+  rds_port    = try(var.settings.port, 5432)
+  db_name     = try(var.settings.database_name, "cluster_db")
+  master_user = try(var.settings.master_username, "cluster_root")
 }
 
 # Provision RDS global cluster only if settings.global_cluster.create=true
@@ -22,8 +24,8 @@ resource "aws_rds_cluster" "this" {
   engine_version              = var.settings.engine_version
   global_cluster_identifier   = try(var.settings.global_cluster.create, false) ? aws_rds_global_cluster.this[0].id : try(var.settings.global_cluster.id, null)
   availability_zones          = var.settings.availability_zones
-  database_name               = try(var.settings.database_name, "cluster_db")
-  master_username             = try(var.settings.master_username, "cluster_root")
+  database_name               = local.db_name
+  master_username             = local.master_user
   master_password             = random_password.randompass.result
   backup_retention_period     = try(var.settings.backup.retention_period, 5)
   preferred_backup_window     = try(var.settings.backup.window, "01:00-03:00")

@@ -23,14 +23,3 @@ resource "random_password" "randompass" {
 resource "time_rotating" "randompass" {
   rotation_days = try(var.settings.password_rotation_period, 90)
 }
-
-# Secrets saving
-resource "aws_secretsmanager_secret" "randompass" {
-  name = "${local.secret_store_path}/admin/password"
-  tags = local.all_tags
-}
-
-resource "aws_secretsmanager_secret_version" "randompass" {
-  secret_id     = aws_secretsmanager_secret.randompass.id
-  secret_string = random_password.randompass.result
-}
