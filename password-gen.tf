@@ -7,7 +7,7 @@
 resource "random_password" "randompass" {
   length           = 20
   special          = false
-  override_special = "=_-+"
+  override_special = "=_-@"
   min_upper        = 2
   min_special      = 1
   min_numeric      = 2
