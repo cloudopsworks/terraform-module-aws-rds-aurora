@@ -48,3 +48,15 @@ output "rds_cluster_instance_endpoints" {
 output "rds_global_cluster_id" {
   value = aws_rds_global_cluster.this[*].id
 }
+
+output "cluster_secrets_admin_user" {
+  value = aws_secretsmanager_secret.dbuser.name
+}
+
+output "cluster_secrets_admin_password" {
+  value = aws_secretsmanager_secret.randompass.name
+}
+
+output "cluster_secrets_credentials" {
+  value = aws_secretsmanager_secret.rds.name
+}
