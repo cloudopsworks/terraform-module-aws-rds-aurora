@@ -43,12 +43,13 @@ resource "aws_rds_cluster" "this" {
 }
 
 resource "aws_rds_cluster_instance" "this" {
-  count              = try(var.settings.replicas, 1)
-  identifier         = "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
-  cluster_identifier = aws_rds_cluster.this.id
-  instance_class     = var.settings.instance_size
-  engine             = var.settings.engine_type
-  engine_version     = var.settings.engine_version
-  apply_immediately  = try(var.settings.apply_immediately, true)
-  tags               = local.all_tags
+  count                      = try(var.settings.replicas, 1)
+  identifier                 = "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
+  cluster_identifier         = aws_rds_cluster.this.id
+  instance_class             = var.settings.instance_size
+  engine                     = var.settings.engine_type
+  engine_version             = var.settings.engine_version
+  auto_minor_version_upgrade = try(var.settings.auto_minor_upgrade, false)
+  apply_immediately          = try(var.settings.apply_immediately, true)
+  tags                       = local.all_tags
 }
