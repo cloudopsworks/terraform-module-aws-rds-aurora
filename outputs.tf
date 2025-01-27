@@ -4,11 +4,12 @@
 #            Distributed Under Apache v2.0 License
 #
 
-output "rds_password" {
-  description = "The password for the RDS instance"
-  value       = random_password.randompass.result
-  sensitive   = true
-}
+# output "rds_password" {
+#   description = "The password for the RDS instance"
+#   value       = random_password.randompass[0].result
+#   sensitive   = true
+# }
+# RDS Password will not be exposed by any means
 
 output "rds_security_group_ids" {
   value = local.security_group_ids
@@ -50,13 +51,17 @@ output "rds_global_cluster_id" {
 }
 
 output "cluster_secrets_admin_user" {
-  value = aws_secretsmanager_secret.dbuser.name
+  value = try(var.settings.managed_password_rotation, false) ? null : aws_secretsmanager_secret.dbuser[0].name
 }
 
 output "cluster_secrets_admin_password" {
-  value = aws_secretsmanager_secret.randompass.name
+  value = try(var.settings.managed_password_rotation, false) ? null : aws_secretsmanager_secret.randompass[0].name
 }
 
 output "cluster_secrets_credentials" {
-  value = aws_secretsmanager_secret.rds.name
+  value = try(var.settings.managed_password_rotation, false) ? null : aws_secretsmanager_secret.rds[0].name
+}
+
+output "rds_instance_master_user_secret" {
+  value = try(var.settings.managed_password_rotation, false) ? aws_rds_cluster.this.master_user_secret : null
 }

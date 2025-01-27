@@ -7,7 +7,7 @@
 locals {
   rds_credentials = {
     username            = local.master_user
-    password            = random_password.randompass.result
+    password            = try(var.settings.managed_password_rotation, false) ? null : random_password.randompass[0].result
     engine              = aws_rds_cluster.this.engine
     host                = aws_rds_cluster.this.endpoint
     port                = aws_rds_cluster.this.port
@@ -17,34 +17,40 @@ locals {
 
 # Secrets saving
 resource "aws_secretsmanager_secret" "dbuser" {
+  count      = try(var.settings.managed_password_rotation, false) ? 0 : 1
   depends_on = [aws_rds_cluster.this]
   name       = "${local.secret_store_path}/${var.settings.engine_type}/${aws_rds_cluster.this.cluster_identifier}/${local.db_name}/master-username"
   tags       = local.all_tags
 }
 
 resource "aws_secretsmanager_secret_version" "dbuser" {
-  secret_id     = aws_secretsmanager_secret.dbuser.id
+  count         = try(var.settings.managed_password_rotation, false) ? 0 : 1
+  secret_id     = aws_secretsmanager_secret.dbuser[count.index].id
   secret_string = local.master_user
 }
 
 resource "aws_secretsmanager_secret" "randompass" {
+  count      = try(var.settings.managed_password_rotation, false) ? 0 : 1
   depends_on = [aws_rds_cluster.this]
   name       = "${local.secret_store_path}/${var.settings.engine_type}/${aws_rds_cluster.this.cluster_identifier}/${local.db_name}/master-password"
   tags       = local.all_tags
 }
 
 resource "aws_secretsmanager_secret_version" "randompass" {
-  secret_id     = aws_secretsmanager_secret.randompass.id
-  secret_string = random_password.randompass.result
+  count         = try(var.settings.managed_password_rotation, false) ? 0 : 1
+  secret_id     = aws_secretsmanager_secret.randompass[count.index].id
+  secret_string = random_password.randompass[count.index].result
 }
 
 # Secrets saving
 resource "aws_secretsmanager_secret" "rds" {
-  name = "${local.secret_store_path}/${var.settings.engine_type}/${aws_rds_cluster.this.cluster_identifier}/${local.db_name}/master-rds-credentials"
-  tags = local.all_tags
+  count = try(var.settings.managed_password_rotation, false) ? 0 : 1
+  name  = "${local.secret_store_path}/${var.settings.engine_type}/${aws_rds_cluster.this.cluster_identifier}/${local.db_name}/master-rds-credentials"
+  tags  = local.all_tags
 }
 
 resource "aws_secretsmanager_secret_version" "rds" {
-  secret_id     = aws_secretsmanager_secret.rds.id
+  count         = try(var.settings.managed_password_rotation, false) ? 0 : 1
+  secret_id     = aws_secretsmanager_secret.rds[count.index].id
   secret_string = jsonencode(local.rds_credentials)
 }
