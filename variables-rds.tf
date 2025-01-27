@@ -33,6 +33,7 @@
 #   # Instance specific
 #   replicas: 2
 #   instance_size: "db.r5.large"
+#   managed_password_rotation: false
 variable "settings" {
   description = "Settings for RDS instance"
   type        = any
