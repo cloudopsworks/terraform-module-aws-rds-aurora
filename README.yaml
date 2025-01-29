@@ -11,17 +11,105 @@ copyrights:
 github_repo: cloudopsworks/terraform-module-aws-rds-aurora
 
 description: |-
-  VPC Module for setting up RDS Aurora Cluster and DB instances.
+  Terraform AWS RDS Aurora Cluster/DB Module.
 
 # Introduction to the project
-#introduction: |-
-#  This is an introduction.
+introduction: |-
+  This module provisions an Amazon Aurora cluster using Terraform on AWS. It supports a variety
+  of configurations (e.g., engine versions, instance sizes, storage autoscaling, read replicas, etc.).
+  The module is designed to be easily integrated with Terragrunt, leveraging the Gruntwork boilerplate
+  files in the `.boilerplate` folder.
+  
+  If you are using `terragrunt scaffold`, this README will guide you through referencing this module,
+  setting your variables, and quickly standing up an Aurora cluster.
 
 # How to use this project
-#usage: |-
+usage: |-
+  You can directly reference this module in your Terraform or Terragrunt code.
+  
+  Example with Terraform (without Terragrunt):
+  
+  ```hcl
+  module "aurora" {
+   source  = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=develop"
+  
+   # Required variables
+   region                 = var.region
+   cluster_identifier     = "my-aurora-cluster"
+   engine                 = "aurora-postgresql"
+   engine_version         = "13.6"
+   instance_class         = "db.r6g.large"
+   db_subnet_ids          = ["subnet-12345abc", "subnet-67890def"]
+   vpc_security_group_ids = ["sg-0123456789abcdef0"]
+  
+   # Additional configuration
+   # ...
+  }
+  ```
+  
+  When using Terragrunt, you can scaffold your directory structure and configuration by running:
+  
+  ```bash
+  terragrunt scaffold
+  ```
+  
+  This command will create a new folder structure based on the Gruntwork boilerplate files in
+  `.boilerplate`, and generate a `terragrunt.hcl` file pointing to this Aurora module.
+  You can then customize the `terragrunt.hcl` or the auto-generated `terraform.tfvars` as needed.
+  
+  quickstart
+  1) Clone or fork the `terraform-module-aws-rds-aurora` repository.
+  2) If using Terragrunt, run `terragrunt scaffold` in an empty directory to initialize your
+    working environment.
+  3) The scaffold process will produce a `terragrunt.hcl` that references this module in its
+    `source` URL. You can edit that file to set your Aurora configuration variables.
+  4) Review the variables in the `variables-*.tf` files to understand all available settings.
+  5) Once your configuration is ready, run:
+  
+    ```bash
+    terragrunt init
+    terragrunt plan
+    terragrunt apply
+    ```
+  
+    This will provision the Aurora cluster in your AWS account.
 
 # Example usage
-#examples: |-
+examples: |-
+  Below is a sample snippet (in YAML format) that demonstrates how Terragrunt’s YAML input might
+  look for this module. This is derived from the comments marked with `## YAML Input Format` (or
+  similar) in the module’s `variables*.tf` files. Adapt it for your `terragrunt.yaml` or other
+  YAML-based configuration files.
+  
+  ```yaml
+  # Example Terragrunt YAML file (e.g. terragrunt.yaml)
+  aws_rds_aurora:
+   region: us-east-1
+   cluster_identifier: my-aurora-cluster
+   engine: aurora-postgresql
+   engine_version: "13.6"
+   instance_class: db.r6g.large
+  
+   db_subnet_ids:
+     - subnet-12345abc
+     - subnet-67890def
+  
+   vpc_security_group_ids:
+     - sg-0123456789abcdef0
+  
+   master_username: mydbadmin
+   master_password: changeme123
+   backup_retention_period: 7
+   preferred_backup_window: "03:00-04:00"
+   preferred_maintenance_window: "sun:05:00-sun:06:00"
+   apply_immediately: true
+   # ...
+  ```
+  
+  In your Terragrunt configuration, reference these YAML values to populate the module variables
+  accordingly. Consult the main module source code and the `variables*.tf` files for full details
+  on all available variables (including their allowed types, defaults, and usage notes) as
+  annotated with `## YAML Input Format`, `## YAML Input`, or `## YAML Format`.
 
 # How to get started quickly
 #quickstart: |-
