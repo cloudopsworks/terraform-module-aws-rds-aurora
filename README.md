@@ -15,7 +15,7 @@
 
 
 
-VPC Module for setting up RDS Aurora Cluster and DB instances.
+Terraform AWS RDS Aurora Cluster/DB Module.
 
 
 ---
@@ -48,10 +48,111 @@ We have [*lots of terraform modules*][terraform_modules] that are Open Source an
 
 
 
+## Introduction
+
+This module provisions an Amazon Aurora cluster using Terraform on AWS. It supports a variety
+of configurations (e.g., engine versions, instance sizes, storage autoscaling, read replicas, etc.).
+The module is designed to be easily integrated with Terragrunt, leveraging the Gruntwork boilerplate
+files in the `.boilerplate` folder.
+
+If you are using `terragrunt scaffold`, this README will guide you through referencing this module,
+setting your variables, and quickly standing up an Aurora cluster.
+
+## Usage
+
+
+**IMPORTANT:** The `master` branch is used in `source` just as an example. In your code, do not pin to `master` because there may be breaking changes between releases.
+Instead pin to the release tag (e.g. `?ref=vX.Y.Z`) of one of our [latest releases](https://github.com/cloudopsworks/terraform-module-aws-rds-aurora/releases).
+
+
+You can directly reference this module in your Terraform or Terragrunt code.
+
+Example with Terraform (without Terragrunt):
+
+```hcl
+module "aurora" {
+ source  = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=develop"
+
+ # Required variables
+ region                 = var.region
+ cluster_identifier     = "my-aurora-cluster"
+ engine                 = "aurora-postgresql"
+ engine_version         = "13.6"
+ instance_class         = "db.r6g.large"
+ db_subnet_ids          = ["subnet-12345abc", "subnet-67890def"]
+ vpc_security_group_ids = ["sg-0123456789abcdef0"]
+
+ # Additional configuration
+ # ...
+}
+```
+
+When using Terragrunt, you can scaffold your directory structure and configuration by running:
+
+```bash
+terragrunt scaffold
+```
+
+This command will create a new folder structure based on the Gruntwork boilerplate files in
+`.boilerplate`, and generate a `terragrunt.hcl` file pointing to this Aurora module.
+You can then customize the `terragrunt.hcl` or the auto-generated `terraform.tfvars` as needed.
+
+quickstart
+1) Clone or fork the `terraform-module-aws-rds-aurora` repository.
+2) If using Terragrunt, run `terragrunt scaffold` in an empty directory to initialize your
+  working environment.
+3) The scaffold process will produce a `terragrunt.hcl` that references this module in its
+  `source` URL. You can edit that file to set your Aurora configuration variables.
+4) Review the variables in the `variables-*.tf` files to understand all available settings.
+5) Once your configuration is ready, run:
+
+  ```bash
+  terragrunt init
+  terragrunt plan
+  terragrunt apply
+  ```
+
+  This will provision the Aurora cluster in your AWS account.
 
 
 
 
+## Examples
+
+Below is a sample snippet (in YAML format) that demonstrates how Terragrunt’s YAML input might
+look for this module. This is derived from the comments marked with `## YAML Input Format` (or
+similar) in the module’s `variables*.tf` files. Adapt it for your `terragrunt.yaml` or other
+YAML-based configuration files.
+
+```yaml
+# Example Terragrunt YAML file (e.g. terragrunt.yaml)
+aws_rds_aurora:
+ region: us-east-1
+ cluster_identifier: my-aurora-cluster
+ engine: aurora-postgresql
+ engine_version: "13.6"
+ instance_class: db.r6g.large
+
+ db_subnet_ids:
+   - subnet-12345abc
+   - subnet-67890def
+
+ vpc_security_group_ids:
+   - sg-0123456789abcdef0
+
+ master_username: mydbadmin
+ master_password: changeme123
+ backup_retention_period: 7
+ preferred_backup_window: "03:00-04:00"
+ preferred_maintenance_window: "sun:05:00-sun:06:00"
+ apply_immediately: true
+ # ...
+```
+
+In your Terragrunt configuration, reference these YAML values to populate the module variables
+accordingly. Consult the main module source code and the `variables*.tf` files for full details
+on all available variables (including their allowed types, defaults, and usage notes) as
+annotated with `## YAML Input Format`, `## YAML Input`, or `## YAML Format`.
 
 
 
@@ -62,7 +163,8 @@ Available targets:
   help                                Help screen
   help/all                            Display help for all targets
   help/short                          This help short screen
-  lint                                Lint terraform code
+  lint                                Lint terraform/opentofu code
+  tag                                 Tag the current version
 
 ```
 ## Requirements
@@ -91,8 +193,13 @@ Available targets:
 |------|------|
 | [aws_rds_cluster.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster) | resource |
 | [aws_rds_cluster_instance.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster_instance) | resource |
+| [aws_rds_global_cluster.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_global_cluster) | resource |
+| [aws_secretsmanager_secret.dbuser](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
 | [aws_secretsmanager_secret.randompass](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
+| [aws_secretsmanager_secret.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
+| [aws_secretsmanager_secret_version.dbuser](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
 | [aws_secretsmanager_secret_version.randompass](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
+| [aws_secretsmanager_secret_version.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
 | [aws_security_group.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
 | [aws_vpc_security_group_ingress_rule.this_cidr](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
 | [aws_vpc_security_group_ingress_rule.this_sg](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
@@ -118,13 +225,19 @@ Available targets:
 
 | Name | Description |
 |------|-------------|
+| <a name="output_cluster_secrets_admin_password"></a> [cluster\_secrets\_admin\_password](#output\_cluster\_secrets\_admin\_password) | n/a |
+| <a name="output_cluster_secrets_admin_user"></a> [cluster\_secrets\_admin\_user](#output\_cluster\_secrets\_admin\_user) | n/a |
+| <a name="output_cluster_secrets_credentials"></a> [cluster\_secrets\_credentials](#output\_cluster\_secrets\_credentials) | n/a |
 | <a name="output_rds_cluster_arn"></a> [rds\_cluster\_arn](#output\_rds\_cluster\_arn) | n/a |
 | <a name="output_rds_cluster_endpoint"></a> [rds\_cluster\_endpoint](#output\_rds\_cluster\_endpoint) | n/a |
 | <a name="output_rds_cluster_hosted_zone_id"></a> [rds\_cluster\_hosted\_zone\_id](#output\_rds\_cluster\_hosted\_zone\_id) | n/a |
+| <a name="output_rds_cluster_instance_endpoints"></a> [rds\_cluster\_instance\_endpoints](#output\_rds\_cluster\_instance\_endpoints) | n/a |
+| <a name="output_rds_cluster_instance_ids"></a> [rds\_cluster\_instance\_ids](#output\_rds\_cluster\_instance\_ids) | n/a |
 | <a name="output_rds_cluster_master_username"></a> [rds\_cluster\_master\_username](#output\_rds\_cluster\_master\_username) | n/a |
 | <a name="output_rds_cluster_port"></a> [rds\_cluster\_port](#output\_rds\_cluster\_port) | n/a |
 | <a name="output_rds_cluster_reader_endpoint"></a> [rds\_cluster\_reader\_endpoint](#output\_rds\_cluster\_reader\_endpoint) | n/a |
-| <a name="output_rds_password"></a> [rds\_password](#output\_rds\_password) | The password for the RDS instance |
+| <a name="output_rds_global_cluster_id"></a> [rds\_global\_cluster\_id](#output\_rds\_global\_cluster\_id) | n/a |
+| <a name="output_rds_instance_master_user_secret"></a> [rds\_instance\_master\_user\_secret](#output\_rds\_instance\_master\_user\_secret) | n/a |
 | <a name="output_rds_security_group_ids"></a> [rds\_security\_group\_ids](#output\_rds\_security\_group\_ids) | n/a |
 
 
@@ -159,7 +272,7 @@ Please use the [issue tracker](https://github.com/cloudopsworks/terraform-module
 
 ## Copyrights
 
-Copyright © 2024-2024 [Cloud Ops Works LLC](https://cloudops.works)
+Copyright © 2024-2025 [Cloud Ops Works LLC](https://cloudops.works)
 
 
 
