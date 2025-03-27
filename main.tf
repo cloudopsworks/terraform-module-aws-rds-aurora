@@ -52,5 +52,5 @@ resource "aws_rds_cluster_instance" "this" {
   engine_version             = var.settings.engine_version
   auto_minor_version_upgrade = try(var.settings.auto_minor_upgrade, false)
   apply_immediately          = try(var.settings.apply_immediately, true)
-  tags                       = local.all_tags
+  tags                       = merge(local.all_tags, local.backup_tags)
 }
