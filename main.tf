@@ -18,10 +18,10 @@ resource "aws_rds_global_cluster" "this" {
 }
 
 resource "random_string" "final_snapshot" {
-  length = 10
+  length  = 10
   special = false
-    upper = false
-    lower = true
+  upper   = false
+  lower   = true
   numeric = true
 }
 
