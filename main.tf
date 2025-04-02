@@ -17,6 +17,14 @@ resource "aws_rds_global_cluster" "this" {
   engine_version            = var.settings.engine_version
 }
 
+resource "random_string" "final_snapshot" {
+  length = 10
+  special = false
+    upper = false
+    lower = true
+  numeric = true
+}
+
 # Provisions RDS instance only if rds_provision=true
 resource "aws_rds_cluster" "this" {
   cluster_identifier          = "rds-${var.settings.name_prefix}-${local.system_name}"
@@ -37,7 +45,7 @@ resource "aws_rds_cluster" "this" {
   db_subnet_group_name        = var.vpc.subnet_group
   kms_key_id                  = try(var.settings.storage.encryption.kms_key_id, null)
   port                        = local.rds_port
-  final_snapshot_identifier   = "rds-${var.settings.name_prefix}-${local.system_name}-cluster-final-snap"
+  final_snapshot_identifier   = "rds-${var.settings.name_prefix}-${local.system_name}-cluster-final-snap-${random_string.final_snapshot.result}"
   deletion_protection         = try(var.settings.deletion_protection, true)
   allow_major_version_upgrade = try(var.settings.allow_upgrade, true)
   tags                        = local.all_tags
