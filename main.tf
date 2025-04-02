@@ -27,7 +27,7 @@ resource "aws_rds_cluster" "this" {
   database_name               = local.db_name
   master_username             = local.master_user
   master_password             = try(var.settings.managed_password_rotation, false) ? null : random_password.randompass[0].result
-  manage_master_user_password = try(var.settings.managed_password_rotation, false)
+  manage_master_user_password = try(var.settings.managed_password_rotation, false) ? true : null
   backup_retention_period     = try(var.settings.backup.retention_period, 5)
   preferred_backup_window     = try(var.settings.backup.window, "01:00-03:00")
   copy_tags_to_snapshot       = try(var.settings.backup.copy_tags, true)
