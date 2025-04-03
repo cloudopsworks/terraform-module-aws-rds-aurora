@@ -10,7 +10,7 @@ data "aws_secretsmanager_secret" "rds_managed" {
 }
 
 locals {
-  hoop_tags = ""
+  hoop_tags = length(try(var.settings.hoop.tags, [])) > 0 ? join(" ", [for v in var.settings.hoop.tags : "--tags \"${v}\""]) : ""
 }
 
 

@@ -35,6 +35,7 @@
 #   hoop:
 #     enabled: true | false
 #     agent: hoop-agent-name
+#     tags: ["tag1", "tag2"]
 variable "settings" {
   description = "Settings for RDS instance"
   type        = any
