@@ -26,7 +26,7 @@ hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   -e "DB=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:dbname" \
   -e "SSLMODE=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:sslmode" \
   --overwrite \
-  ${local.hoop_tags} \
+  ${local.hoop_tags}
 EOT
   ) : null
 }
@@ -43,7 +43,7 @@ hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   -e "DB=_aws:${aws_secretsmanager_secret.rds[0].name}:dbname" \
   -e "SSLMODE=_aws:${aws_secretsmanager_secret.rds[0].name}:sslmode" \
   --overwrite \
-  ${local.hoop_tags} \
+  ${local.hoop_tags}
 EOT
   ) : null
 }
@@ -59,7 +59,7 @@ hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   -e "PASS=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:password" \
   -e "DB=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:dbname" \
   --overwrite \
-  ${local.hoop_tags} \
+  ${local.hoop_tags}
 EOT
   ) : null
 }
@@ -75,7 +75,7 @@ hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   -e "PASS=_aws:${aws_secretsmanager_secret.rds[0].name}:password" \
   -e "DB=_aws:${aws_secretsmanager_secret.rds[0].name}:dbname" \
   --overwrite \
-  ${local.hoop_tags} \
+  ${local.hoop_tags}
 EOT
   ) : null
 }
