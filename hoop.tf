@@ -40,7 +40,7 @@ hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   -e "USER=_aws:${aws_secretsmanager_secret.rds[0].name}:username" \
   -e "PASS=_aws:${aws_secretsmanager_secret.rds[0].name}:password" \
   -e "DB=_aws:${aws_secretsmanager_secret.rds[0].name}:dbname" \
-  -e "SSLMODE=prefer \
+  -e "SSLMODE=prefer" \
   --overwrite \
   ${local.hoop_tags}
 EOT
