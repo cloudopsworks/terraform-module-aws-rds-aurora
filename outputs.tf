@@ -50,14 +50,6 @@ output "rds_global_cluster_id" {
   value = aws_rds_global_cluster.this[*].id
 }
 
-output "cluster_secrets_admin_user" {
-  value = try(var.settings.managed_password_rotation, false) ? null : aws_secretsmanager_secret.dbuser[0].name
-}
-
-output "cluster_secrets_admin_password" {
-  value = try(var.settings.managed_password_rotation, false) ? null : aws_secretsmanager_secret.randompass[0].name
-}
-
 output "cluster_secrets_credentials" {
   value = try(var.settings.managed_password_rotation, false) ? null : aws_secretsmanager_secret.rds[0].name
 }
