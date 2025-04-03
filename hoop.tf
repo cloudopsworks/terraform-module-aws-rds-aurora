@@ -67,7 +67,7 @@ output "hoop_connection_mysql" {
   value = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && !try(var.settings.managed_password_rotation, false) ? (<<EOT
 hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   --agent ${var.settings.hoop.agent} \
-  --type database/postgres \
+  --type database/mysql \
   -e "HOST=_aws:${aws_secretsmanager_secret.rds[0].name}:host" \
   -e "PORT=_aws:${aws_secretsmanager_secret.rds[0].name}:port" \
   -e "USER=_aws:${aws_secretsmanager_secret.rds[0].name}:username" \
