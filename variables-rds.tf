@@ -4,8 +4,6 @@
 #            Distributed Under Apache v2.0 License
 #
 
-
-
 ##  YAML Input Format
 # settings:
 #   # Global Cluster
@@ -16,7 +14,7 @@
 #   name_prefix: "mydb"
 #   database_name: "mydb"
 #   master_username: "admin"
-#   engine_type: "aurora-postgresql"
+#   engine_type: "aurora-postgresql" or "aurora-mysql"
 #   engine_version: "10.7"
 #   availability_zones: ["us-east-1a", "us-east-1b"]
 #   rds_port: 5432
@@ -34,6 +32,9 @@
 #   replicas: 2
 #   instance_size: "db.r5.large"
 #   managed_password_rotation: false
+#   hoop:
+#     enabled: true | false
+#     agent: hoop-agent-name
 variable "settings" {
   description = "Settings for RDS instance"
   type        = any
