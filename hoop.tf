@@ -13,7 +13,6 @@ locals {
   hoop_tags = length(try(var.settings.hoop.tags, [])) > 0 ? join(" ", [for v in var.settings.hoop.tags : "--tags \"${v}\""]) : ""
 }
 
-
 output "hoop_connection_postgres_managed" {
   value = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && try(var.settings.managed_password_rotation, false) ? (<<EOT
 hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
@@ -24,7 +23,7 @@ hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   -e "USER=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:username" \
   -e "PASS=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:password" \
   -e "DB=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:dbname" \
-  -e "SSLMODE=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:sslmode" \
+  -e "SSLMODE=prefer" \
   --overwrite \
   ${local.hoop_tags}
 EOT
@@ -41,7 +40,7 @@ hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   -e "USER=_aws:${aws_secretsmanager_secret.rds[0].name}:username" \
   -e "PASS=_aws:${aws_secretsmanager_secret.rds[0].name}:password" \
   -e "DB=_aws:${aws_secretsmanager_secret.rds[0].name}:dbname" \
-  -e "SSLMODE=_aws:${aws_secretsmanager_secret.rds[0].name}:sslmode" \
+  -e "SSLMODE=prefer \
   --overwrite \
   ${local.hoop_tags}
 EOT
