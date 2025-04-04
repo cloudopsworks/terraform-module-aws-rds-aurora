@@ -177,9 +177,9 @@ Available targets:
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.69.0 |
-| <a name="provider_random"></a> [random](#provider\_random) | 3.6.3 |
-| <a name="provider_time"></a> [time](#provider\_time) | 0.12.1 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
+| <a name="provider_random"></a> [random](#provider\_random) | n/a |
+| <a name="provider_time"></a> [time](#provider\_time) | n/a |
 
 ## Modules
 
@@ -194,18 +194,16 @@ Available targets:
 | [aws_rds_cluster.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster) | resource |
 | [aws_rds_cluster_instance.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster_instance) | resource |
 | [aws_rds_global_cluster.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_global_cluster) | resource |
-| [aws_secretsmanager_secret.dbuser](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
-| [aws_secretsmanager_secret.randompass](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
 | [aws_secretsmanager_secret.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
-| [aws_secretsmanager_secret_version.dbuser](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
-| [aws_secretsmanager_secret_version.randompass](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
 | [aws_secretsmanager_secret_version.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
 | [aws_security_group.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
 | [aws_vpc_security_group_ingress_rule.this_cidr](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
 | [aws_vpc_security_group_ingress_rule.this_sg](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
 | [random_password.randompass](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) | resource |
+| [random_string.final_snapshot](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) | resource |
 | [time_rotating.randompass](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/rotating) | resource |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
+| [aws_secretsmanager_secret.rds_managed](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/secretsmanager_secret) | data source |
 | [aws_security_group.allow_sg](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/security_group) | data source |
 | [aws_security_group.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/security_group) | data source |
 
@@ -225,9 +223,11 @@ Available targets:
 
 | Name | Description |
 |------|-------------|
-| <a name="output_cluster_secrets_admin_password"></a> [cluster\_secrets\_admin\_password](#output\_cluster\_secrets\_admin\_password) | n/a |
-| <a name="output_cluster_secrets_admin_user"></a> [cluster\_secrets\_admin\_user](#output\_cluster\_secrets\_admin\_user) | n/a |
 | <a name="output_cluster_secrets_credentials"></a> [cluster\_secrets\_credentials](#output\_cluster\_secrets\_credentials) | n/a |
+| <a name="output_hoop_connection_mysql"></a> [hoop\_connection\_mysql](#output\_hoop\_connection\_mysql) | n/a |
+| <a name="output_hoop_connection_mysql_managed"></a> [hoop\_connection\_mysql\_managed](#output\_hoop\_connection\_mysql\_managed) | n/a |
+| <a name="output_hoop_connection_postgres"></a> [hoop\_connection\_postgres](#output\_hoop\_connection\_postgres) | n/a |
+| <a name="output_hoop_connection_postgres_managed"></a> [hoop\_connection\_postgres\_managed](#output\_hoop\_connection\_postgres\_managed) | n/a |
 | <a name="output_rds_cluster_arn"></a> [rds\_cluster\_arn](#output\_rds\_cluster\_arn) | n/a |
 | <a name="output_rds_cluster_endpoint"></a> [rds\_cluster\_endpoint](#output\_rds\_cluster\_endpoint) | n/a |
 | <a name="output_rds_cluster_hosted_zone_id"></a> [rds\_cluster\_hosted\_zone\_id](#output\_rds\_cluster\_hosted\_zone\_id) | n/a |
@@ -237,7 +237,6 @@ Available targets:
 | <a name="output_rds_cluster_port"></a> [rds\_cluster\_port](#output\_rds\_cluster\_port) | n/a |
 | <a name="output_rds_cluster_reader_endpoint"></a> [rds\_cluster\_reader\_endpoint](#output\_rds\_cluster\_reader\_endpoint) | n/a |
 | <a name="output_rds_global_cluster_id"></a> [rds\_global\_cluster\_id](#output\_rds\_global\_cluster\_id) | n/a |
-| <a name="output_rds_instance_master_user_secret"></a> [rds\_instance\_master\_user\_secret](#output\_rds\_instance\_master\_user\_secret) | n/a |
 | <a name="output_rds_security_group_ids"></a> [rds\_security\_group\_ids](#output\_rds\_security\_group\_ids) | n/a |
 
 
