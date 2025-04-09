@@ -16,12 +16,14 @@
 #   master_username: "admin"
 #   engine_type: "aurora-postgresql" or "aurora-mysql"
 #   engine_version: "10.7"
+#   auto_minor_upgrade: true
 #   availability_zones: ["us-east-1a", "us-east-1b"]
 #   rds_port: 5432
 #   apply_immediately: true
-#   encryption:
-#     enabled: true
-#     kms_key_id: "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+#   storage:
+#     encryption:
+#       enabled: true
+#       kms_key_id: "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
 #   backup:
 #     retention_period: 7
 #     window: "01:00-03:00"
