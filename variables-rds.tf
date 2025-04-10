@@ -73,3 +73,9 @@ variable "security_groups" {
   type        = any
   default     = {}
 }
+
+variable "run_hoop" {
+  description = "Run hoop with agent, be careful with this option, it will run the HOOP command in output in a null_resource"
+  type        = bool
+  default     = false
+}
