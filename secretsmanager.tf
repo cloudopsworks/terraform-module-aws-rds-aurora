@@ -11,7 +11,7 @@ locals {
     engine              = aws_rds_cluster.this.engine
     host                = aws_rds_cluster.this.endpoint
     port                = aws_rds_cluster.this.port
-    dbname              =aws_rds_cluster.this.database_name
+    dbname              = aws_rds_cluster.this.database_name
     dbClusterIdentifier = aws_rds_cluster.this.cluster_identifier
   }
 }
