@@ -34,6 +34,10 @@
 #   replicas: 2
 #   instance_size: "db.r5.large"
 #   managed_password_rotation: false
+#   password_secret_kms_key_id: "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012" # KMS key for the password secret or Alias
+#   rotation_lambda_name: "rds-rotation-lambda" # Name of the lambda function to rotate the password, required if managed_password_rotation is false
+#   password_rotation_period: 90 # Rotation period in days for the password, defaults to 90days
+#   rotation_duration: "1h" # Duration of the lambda function to rotate the password, defaults to 1h
 #   hoop:
 #     enabled: true | false
 #     agent: hoop-agent-name
