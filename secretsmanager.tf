@@ -13,6 +13,7 @@ locals {
     port                = aws_rds_cluster.this.port
     dbname              = aws_rds_cluster.this.database_name
     dbClusterIdentifier = aws_rds_cluster.this.cluster_identifier
+    sslmode             = "require"
   }
 }
 
