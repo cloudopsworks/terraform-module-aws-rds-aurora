@@ -47,3 +47,12 @@ resource "aws_secretsmanager_secret_rotation" "user" {
     duration                 = try(var.settings.rotation_duration, "1h")
   }
 }
+
+resource "aws_secretsmanager_secret_rotation" "managed" {
+  count     = try(var.settings.managed_password, false) && try(var.settings.managed_password_rotation, false) ? 1 : 0
+  secret_id = aws_rds_cluster.this.master_user_secret[0].secret_arn
+  rotation_rules {
+    automatically_after_days = try(var.settings.password_rotation_period, 90)
+    duration                 = try(var.settings.rotation_duration, "1h")
+  }
+}
