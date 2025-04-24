@@ -5,27 +5,29 @@
 #
 
 data "aws_secretsmanager_secret" "rds_managed" {
-  count = try(var.settings.managed_password_rotation, false) ? 1 : 0
+  count = try(var.settings.managed_password, false) && try(var.settings.hoop.enabled, false) ? 1 : 0
   arn   = aws_rds_cluster.this.master_user_secret[count.index].secret_arn
 }
 
 locals {
-  hoop_tags = length(try(var.settings.hoop.tags, [])) > 0 ? join(" ", [for v in var.settings.hoop.tags : "--tags \"${v}\""]) : ""
-  hoop_connection_postgres_managed = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && try(var.settings.managed_password_rotation, false) ? (<<EOT
+  master_user_secret_name_arn = try(split(":", aws_rds_cluster.this.master_user_secret[0].secret_arn), [])
+  master_user_secret_name     = length(local.master_user_secret_name_arn) - 1 >= 0 ? local.master_user_secret_name_arn[length(local.master_user_secret_name_arn) - 1] : ""
+  hoop_tags                   = length(try(var.settings.hoop.tags, [])) > 0 ? join(" ", [for v in var.settings.hoop.tags : "--tags \"${v}\""]) : ""
+  hoop_connection_postgres_managed = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && try(var.settings.managed_password, false) ? (<<EOT
 hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   --agent ${var.settings.hoop.agent} \
   --type database/postgres \
-  -e "HOST=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:host" \
-  -e "PORT=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:port" \
+  -e "HOST=${aws_rds_cluster.this.endpoint}" \
+  -e "PORT=${aws_rds_cluster.this.port}" \
   -e "USER=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:username" \
   -e "PASS=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:password" \
-  -e "DB=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:dbname" \
+  -e "DB=${aws_rds_cluster.this.database_name}" \
   -e "SSLMODE=prefer" \
   --overwrite \
   ${local.hoop_tags}
 EOT
   ) : null
-  hoop_connection_postgres = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && !try(var.settings.managed_password_rotation, false) ? (<<EOT
+  hoop_connection_postgres = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && !try(var.settings.managed_password, false) ? (<<EOT
 hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   --agent ${var.settings.hoop.agent} \
   --type database/postgres \
@@ -39,7 +41,7 @@ hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   ${local.hoop_tags}
 EOT
   ) : null
-  hoop_connection_mysql_managed = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && try(var.settings.managed_password_rotation, false) ? (<<EOT
+  hoop_connection_mysql_managed = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && try(var.settings.managed_password, false) ? (<<EOT
 hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   --agent ${var.settings.hoop.agent} \
   --type database/mysql \
@@ -52,7 +54,7 @@ hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   ${local.hoop_tags}
 EOT
   ) : null
-  hoop_connection_mysql = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && !try(var.settings.managed_password_rotation, false) ? (<<EOT
+  hoop_connection_mysql = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && !try(var.settings.managed_password, false) ? (<<EOT
 hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   --agent ${var.settings.hoop.agent} \
   --type database/mysql \

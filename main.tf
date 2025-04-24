@@ -34,8 +34,8 @@ resource "aws_rds_cluster" "this" {
   availability_zones            = var.settings.availability_zones
   database_name                 = local.db_name
   master_username               = local.master_user
-  master_password               = try(var.settings.managed_password_rotation, false) ? null : random_password.randompass[0].result
-  manage_master_user_password   = try(var.settings.managed_password_rotation, false) ? true : null
+  master_password               = try(var.settings.managed_password, false) ? null : random_password.randompass[0].result
+  manage_master_user_password   = try(var.settings.managed_password, false) ? true : null
   master_user_secret_kms_key_id = try(var.settings.managed_password_rotation, false) ? try(var.settings.password_secret_kms_key_id, null) : null
   backup_retention_period       = try(var.settings.backup.retention_period, 5)
   preferred_backup_window       = try(var.settings.backup.window, "01:00-03:00")
