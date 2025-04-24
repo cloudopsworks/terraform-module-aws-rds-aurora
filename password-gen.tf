@@ -5,7 +5,7 @@
 #
 
 resource "random_password" "randompass" {
-  count            = try(var.settings.managed_password_rotation, false) ? 0 : 1
+  count            = try(var.settings.managed_password, false) ? 0 : 1
   length           = 20
   special          = false
   override_special = "=_-"
@@ -22,6 +22,6 @@ resource "random_password" "randompass" {
 }
 
 resource "time_rotating" "randompass" {
-  count         = try(var.settings.managed_password_rotation, false) ? 0 : 1
+  count         = try(var.settings.managed_password, false) ? 0 : 1
   rotation_days = try(var.settings.password_rotation_period, 90)
 }
