@@ -55,5 +55,5 @@ output "cluster_secrets_credentials" {
 }
 
 output "cluster_secrets_credentials_arn" {
-  value = try(var.settings.managed_password, false) ? aws_rds_cluster.this.master_user_secret[0].secret_arn : aws_secretsmanager_secret.rds[0].arn
+  value = try(var.settings.managed_password, false) ? try(aws_rds_cluster.this.master_user_secret[0].secret_arn, "") : aws_secretsmanager_secret.rds[0].arn
 }
