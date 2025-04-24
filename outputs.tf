@@ -51,5 +51,9 @@ output "rds_global_cluster_id" {
 }
 
 output "cluster_secrets_credentials" {
-  value = try(var.settings.managed_password_rotation, false) ? data.aws_secretsmanager_secret.rds_managed[0].name : aws_secretsmanager_secret.rds[0].name
+  value = try(var.settings.managed_password, false) ? local.master_user_secret_name : aws_secretsmanager_secret.rds[0].name
+}
+
+output "cluster_secrets_credentials_arn" {
+  value = try(var.settings.managed_password, false) ? aws_rds_cluster.this.master_user_secret[0].secret_arn : aws_secretsmanager_secret.rds[0].arn
 }
