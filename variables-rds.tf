@@ -28,7 +28,7 @@
 #       kms_key_id: "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
 #   backup:
 #     retention_period: 7
-#     window: "01:00-03:00"
+#     window: "01:00-02:30"
 #     copy_tags: true
 #   deletion_protection: true
 #   allow_upgrade: true
