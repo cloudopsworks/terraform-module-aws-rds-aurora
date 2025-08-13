@@ -26,6 +26,8 @@
 #     encryption:
 #       enabled: true
 #       kms_key_id: "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+#   maintenance:
+#     window: "sun:03:00-sun:04:00"
 #   backup:
 #     retention_period: 7
 #     window: "01:00-02:30"
