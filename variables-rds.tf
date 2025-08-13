@@ -16,23 +16,45 @@
 #   master_username: "admin"
 #   engine_type: "aurora-postgresql" or "aurora-mysql"
 #   engine_version: "10.7"
+#   engine_mode: "provisioned" | "serverless" # (optional) if serverless.enabled is true
 #   auto_minor_upgrade: true
 #   availability_zones: ["us-east-1a", "us-east-1b"]
 #   rds_port: 5432
 #   apply_immediately: true
+#   publicly_accessible: true | false # (optional) If true, the cluster will be publicly accessible
 #   storage:
 #     encryption:
 #       enabled: true
 #       kms_key_id: "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+#   maintenance:
+#     window: "sun:03:00-sun:04:00"
 #   backup:
 #     retention_period: 7
-#     window: "01:00-03:00"
+#     window: "01:00-02:30"
 #     copy_tags: true
 #   deletion_protection: true
 #   allow_upgrade: true
 #   # Instance specific
-#   replicas: 2
-#   instance_size: "db.r5.large"
+#   replicas:
+#     count: 2
+#     replica_0:
+#       availability_zone: "us-east-1a"
+#       promotion_tier: 10
+#       maintenance_window: "wed:03:00-wed:04:00"
+#     replica_1:
+#       availability_zone: "us-east-1b"
+#   instance_size: "db.r5.large" | "db.serverless"
+#   serverless:
+#     enabled: true | false
+#     v2: true | false
+#     scaling_configuration:
+#       # for V2 and V1
+#       min_capacity: 1
+#       max_capacity: 10
+#       seconds_until_auto_pause: 300
+#       # V1 only
+#       auto_pause: true
+#       timeout_action: ForceApplyCapacityChange
 #   managed_password: true | false # If true, the password will be managed by AWS Secrets Manager, defaults to false
 #   managed_password_rotation: true | false # If true, the password will be rotated automatically by AWS Secrets Manager, defaults to false
 #   password_secret_kms_key_id: "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012" # KMS key for the password secret or Alias
