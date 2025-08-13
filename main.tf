@@ -49,7 +49,28 @@ resource "aws_rds_cluster" "this" {
   final_snapshot_identifier     = "rds-${var.settings.name_prefix}-${local.system_name}-cluster-final-snap-${random_string.final_snapshot.result}"
   deletion_protection           = try(var.settings.deletion_protection, true)
   allow_major_version_upgrade   = try(var.settings.allow_upgrade, true)
-  tags                          = local.all_tags
+  engine_mode = try(var.settings.serverless.enabled, false) ? (
+    try(var.settings.serverless.v2, false) ? "provisioned" : "serverless"
+  ) : try(var.settings.engine_mode, null)
+  dynamic "scaling_configuration" {
+    for_each = try(var.settings.serverless.scaling_configuration, null) != null && try(var.settings.serverless.enabled, false) && !try(var.settings.serverless.v2, false) ? [1] : []
+    content {
+      auto_pause               = try(var.settings.serverless.scaling_configuration.auto_pause, null)
+      max_capacity             = try(var.settings.serverless.scaling_configuration.max_capacity, null)
+      min_capacity             = try(var.settings.serverless.scaling_configuration.min_capacity, null)
+      seconds_until_auto_pause = try(var.settings.serverless.scaling_configuration.seconds_until_auto_pause, null)
+      timeout_action           = try(var.settings.serverless.scaling_configuration.timeout_action, null)
+    }
+  }
+  dynamic "serverlessv2_scaling_configuration" {
+    for_each = try(var.settings.serverless.scaling_configuration, null) != null && try(var.settings.serverless.enabled, false) && try(var.settings.serverless.v2, false) ? [1] : []
+    content {
+      max_capacity             = try(var.settings.serverless.scaling_configuration.max_capacity, null)
+      min_capacity             = try(var.settings.serverless.scaling_configuration.min_capacity, null)
+      seconds_until_auto_pause = try(var.settings.serverless.scaling_configuration.seconds_until_auto_pause, null)
+    }
+  }
+  tags = local.all_tags
 }
 
 resource "aws_rds_cluster_instance" "this" {
