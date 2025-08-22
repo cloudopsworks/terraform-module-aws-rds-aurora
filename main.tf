@@ -53,7 +53,7 @@ resource "aws_rds_cluster" "this" {
   vpc_security_group_ids        = local.security_group_ids
   storage_encrypted             = try(var.settings.storage.encryption.enabled, false)
   db_subnet_group_name          = var.vpc.subnet_group
-  kms_key_id                    = try(var.settings.storage.encryption.kms_key_id, aws_kms_key.this[0].id, null)
+  kms_key_id                    = try(var.settings.storage.encryption.enabled, false) ? try(var.settings.storage.encryption.kms_key_id, aws_kms_key.this[0].id) : null
   port                          = local.rds_port
   final_snapshot_identifier     = "rds-${var.settings.name_prefix}-${local.system_name}-cluster-final-snap-${random_string.final_snapshot.result}"
   snapshot_identifier           = try(var.settings.recovery.enabled, false) ? data.aws_db_cluster_snapshot.recovery[0].id : null
