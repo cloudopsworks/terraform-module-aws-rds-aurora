@@ -57,3 +57,15 @@ output "cluster_secrets_credentials" {
 output "cluster_secrets_credentials_arn" {
   value = try(var.settings.managed_password, false) ? try(aws_rds_cluster.this.master_user_secret[0].secret_arn, "") : aws_secretsmanager_secret.rds[0].arn
 }
+
+output "cluster_kms_key_id" {
+  value = try(var.settings.storage.encryption.enabled, false) ? try(var.settings.storage.encryption.kms_key_id, aws_kms_key.this[0].id) : null
+}
+
+output "cluster_kms_key_arn" {
+  value = try(var.settings.storage.encryption.enabled, false) && try(var.settings.storage.encryption.kms_key_id, "") == "" ? aws_kms_key.this[0].arn : null
+}
+
+output "cluster_kms_key_alias" {
+  value = try(var.settings.storage.encryption.enabled, false) && try(var.settings.storage.encryption.kms_key_id, "") == "" ? aws_kms_alias.this[0].name : null
+}

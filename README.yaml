@@ -112,7 +112,7 @@ examples: |-
   annotated with `## YAML Input Format`, `## YAML Input`, or `## YAML Format`.
 
 # How to get started quickly
-#quickstart: |-
+quickstart: |-
 
 include:
   - "docs/targets.md"
