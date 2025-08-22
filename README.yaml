@@ -11,108 +11,378 @@ copyrights:
 github_repo: cloudopsworks/terraform-module-aws-rds-aurora
 
 description: |-
-  Terraform AWS RDS Aurora Cluster/DB Module.
+  Production-ready Terraform module to provision Amazon Aurora (MySQL or PostgreSQL) clusters on AWS.
+  Supports provisioned and Serverless v2 engine modes, multi-AZ read replicas, encryption with KMS,
+  snapshot-based recovery, and optional managed/rotated master password via AWS Secrets Manager.
+  Designed for first-class use with Terragrunt and compatible with common Gruntwork-style boilerplates.
 
 # Introduction to the project
 introduction: |-
-  This module provisions an Amazon Aurora cluster using Terraform on AWS. It supports a variety
-  of configurations (e.g., engine versions, instance sizes, storage autoscaling, read replicas, etc.).
-  The module is designed to be easily integrated with Terragrunt, leveraging the Gruntwork boilerplate
-  files in the `.boilerplate` folder.
+  This module abstracts the complexity of building secure and scalable Amazon Aurora clusters. It
+  exposes a compact input model (settings, vpc, security_groups) with sensible defaults while remaining
+  flexible enough for advanced scenarios like global clusters, serverless scaling, snapshot recovery, and
+  password rotation. It is cloud-native, tag-aware, and non-intrusive: you can bring your own networking
+  and security groups or let the module help with sane defaults.
   
-  If you are using `terragrunt scaffold`, this README will guide you through referencing this module,
-  setting your variables, and quickly standing up an Aurora cluster.
+  Integration with Terragrunt is straightforward. If you work with Gruntwork-style scaffolding or any
+  similar boilerplate (often stored under a `.boilerplate` directory), you can point your Terragrunt
+  configuration at this module and pass inputs using plain HCL maps. This README provides a full usage
+  reference and a complete set of Terragrunt examples to get you up and running quickly.
 
 # How to use this project
 usage: |-
-  You can directly reference this module in your Terraform or Terragrunt code.
+  You can reference this module from Terraform or Terragrunt. Always pin to a release tag (e.g. `?ref=vX.Y.Z`).
   
-  Example with Terraform (without Terragrunt):
+  Terraform example:
   
   ```hcl
   module "aurora" {
-   source  = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=develop"
+    source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z"
   
-   # Required variables
-   region                 = var.region
-   cluster_identifier     = "my-aurora-cluster"
-   engine                 = "aurora-postgresql"
-   engine_version         = "13.6"
-   instance_class         = "db.r6g.large"
-   db_subnet_ids          = ["subnet-12345abc", "subnet-67890def"]
-   vpc_security_group_ids = ["sg-0123456789abcdef0"]
+    # Core inputs (full reference below)
+    settings = {
+      name_prefix     = "mydb"
+      engine_type     = "aurora-postgresql"
+      engine_version  = "15.3"
+      instance_size   = "db.r6g.large"
+      availability_zones = ["us-east-1a", "us-east-1b"]
+      backup = {
+        retention_period = 7
+      }
+      maintenance = {
+        window = "sun:03:00-sun:04:00"
+      }
+    }
   
-   # Additional configuration
-   # ...
+    vpc = {
+      vpc_id       = "vpc-xxxxxxxxxxxx"
+      subnet_group = "mydb-subnet-group"
+      subnet_ids   = ["subnet-aaaa", "subnet-bbbb"]
+    }
+  
+    security_groups = {
+      create = false
+      name   = "sg-mydb"
+    }
+  
+    org = {
+      organization_name = "acme"
+      organization_unit = "platform"
+      environment_type  = "prod"
+      environment_name  = "us-east-1"
+    }
+  
+    extra_tags = { cost_center = "dba" }
+    run_hoop   = false
   }
   ```
   
-  When using Terragrunt, you can scaffold your directory structure and configuration by running:
+  Terragrunt example (standalone block):
   
-  ```bash
-  terragrunt scaffold
+  ```hcl
+  terraform {
+    source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z"
+  }
+  
+  inputs = {
+    settings = {
+      name_prefix     = "mydb"
+      engine_type     = "aurora-postgresql"
+      engine_version  = "15.3"
+      instance_size   = "db.r6g.large"
+      availability_zones = ["us-east-1a", "us-east-1b"]
+      backup = { retention_period = 7 }
+      maintenance = { window = "sun:03:00-sun:04:00" }
+    }
+  
+    vpc = {
+      vpc_id       = "vpc-xxxxxxxxxxxx"
+      subnet_group = "mydb-subnet-group"
+      subnet_ids   = ["subnet-aaaa", "subnet-bbbb"]
+    }
+  
+    security_groups = {
+      create = false
+      name   = "sg-mydb"
+    }
+  
+    org = {
+      organization_name = "acme"
+      organization_unit = "platform"
+      environment_type  = "prod"
+      environment_name  = "us-east-1"
+    }
+  
+    extra_tags = { cost_center = "dba" }
+    run_hoop   = false
+  }
   ```
   
-  This command will create a new folder structure based on the Gruntwork boilerplate files in
-  `.boilerplate`, and generate a `terragrunt.hcl` file pointing to this Aurora module.
-  You can then customize the `terragrunt.hcl` or the auto-generated `terraform.tfvars` as needed.
+  Usage reference (inputs):
   
-  quickstart
-  1) Clone or fork the `terraform-module-aws-rds-aurora` repository.
-  2) If using Terragrunt, run `terragrunt scaffold` in an empty directory to initialize your
-    working environment.
-  3) The scaffold process will produce a `terragrunt.hcl` that references this module in its
-    `source` URL. You can edit that file to set your Aurora configuration variables.
-  4) Review the variables in the `variables-*.tf` files to understand all available settings.
-  5) Once your configuration is ready, run:
+  - settings (object map)
+    - recovery:
+      - enabled (bool): If true, the cluster will be recovered from a snapshot (same or other cluster).
+      - cluster_identifier (string, optional): Source cluster identifier for recovery.
+      - snapshot_identifier (string, optional): Snapshot identifier for recovery.
+    - global_cluster:
+      - create (bool): If true, create a new global cluster resource.
+      - id (string, optional): Use existing Global Cluster ARN/ID (conflicts with create).
+    - name_prefix (string): Prefix used to generate cluster and instance identifiers.
+    - database_name (string): Initial database name inside the cluster.
+    - master_username (string): Master user name (ignored when managed_password is true).
+    - engine_type (string): "aurora-postgresql" or "aurora-mysql".
+    - engine_version (string): Aurora engine version.
+    - engine_mode (string, optional): "provisioned" | "serverless". If serverless.enabled=true and v2=true, engine_mode is forced to "provisioned" (Serverless v2 behavior).
+    - auto_minor_upgrade (bool): Auto minor version upgrade for instances.
+    - availability_zones (list(string)): Target AZs for the cluster/instances.
+    - rds_port (number): Cluster port. Defaults to 5432 if not provided.
+    - apply_immediately (bool): Apply changes immediately when possible.
+    - publicly_accessible (bool): Whether instances are publicly accessible.
+    - storage.encryption:
+      - enabled (bool): Enable storage encryption.
+      - kms_key_id (string, optional): KMS Key or Alias for encryption (created/used depending on kms.tf logic).
+    - maintenance:
+      - window (string): Preferred maintenance window.
+    - backup:
+      - retention_period (number): Backup retention in days.
+      - window (string): Preferred backup window.
+      - copy_tags (bool): Copy tags to snapshots.
+    - deletion_protection (bool): Enable deletion protection.
+    - allow_upgrade (bool): Allow major version upgrades.
+    - replicas:
+      - count (number): Number of instances to create.
+      - replica_N: Per-replica overrides (availability_zone, promotion_tier, maintenance_window).
+    - instance_size (string): Instance class (e.g., "db.r6g.large" or "db.serverless").
+    - serverless:
+      - enabled (bool): Enable Serverless.
+      - v2 (bool): Use Serverless v2 when true.
+      - scaling_configuration: For v1 and v2
+        - min_capacity (number)
+        - max_capacity (number)
+        - seconds_until_auto_pause (number)
+        - auto_pause (bool, v1 only)
+        - timeout_action (string, v1 only)
+    - managed_password (bool): If true, AWS manages master password in Secrets Manager.
+    - managed_password_rotation (bool): If true, enable rotation for managed password.
+    - password_secret_kms_key_id (string): KMS key/alias for the password secret.
+    - rotation_lambda_name (string): Rotation Lambda name (required if managed_password_rotation=false and you rotate externally).
+    - password_rotation_period (number): Rotation period in days (default 90).
+    - rotation_duration (string): Rotation Lambda timeout (e.g., "1h").
+    - hoop:
+      - enabled (bool)
+      - agent (string)
+      - tags (list(string))
   
-    ```bash
-    terragrunt init
-    terragrunt plan
-    terragrunt apply
-    ```
+  - vpc (object map)
+    - vpc_id (string)
+    - subnet_group (string)
+    - subnet_ids (list(string))
   
-    This will provision the Aurora cluster in your AWS account.
+  - security_groups (object map)
+    - create (bool)
+    - name (string): Name/ID to use when create=false
+    - allow_cidrs (list(string))
+    - allow_security_groups (list(string))
+  
+  - run_hoop (bool): Run HOOP agent (advanced; triggers a null_resource that executes a HOOP command).
+  
+  - Module-level tags/flags
+    - is_hub (bool): Whether this is a HUB configuration (default false).
+    - spoke_def (string): Spoke definition suffix (default "001").
+    - org (object):
+      - organization_name (string)
+      - organization_unit (string)
+      - environment_type (string)
+      - environment_name (string)
+    - extra_tags (map(string)): Extra tags to merge on resources.
 
 # Example usage
 examples: |-
-  Below is a sample snippet (in YAML format) that demonstrates how Terragrunt’s YAML input might
-  look for this module. This is derived from the comments marked with `## YAML Input Format` (or
-  similar) in the module’s `variables*.tf` files. Adapt it for your `terragrunt.yaml` or other
-  YAML-based configuration files.
+  The following Terragrunt examples are based on common Gruntwork-style boilerplates (often generated
+  with `terragrunt scaffold` and stored under a `.boilerplate` directory). Adjust include/remote state
+  according to your environment.
   
-  ```yaml
-  # Example Terragrunt YAML file (e.g. terragrunt.yaml)
-  aws_rds_aurora:
-   region: us-east-1
-   cluster_identifier: my-aurora-cluster
-   engine: aurora-postgresql
-   engine_version: "13.6"
-   instance_class: db.r6g.large
+  1) Minimal provisioned Aurora PostgreSQL cluster
   
-   db_subnet_ids:
-     - subnet-12345abc
-     - subnet-67890def
+  ```hcl
+  terraform {
+    source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z"
+  }
   
-   vpc_security_group_ids:
-     - sg-0123456789abcdef0
-  
-   master_username: mydbadmin
-   master_password: changeme123
-   backup_retention_period: 7
-   preferred_backup_window: "03:00-04:00"
-   preferred_maintenance_window: "sun:05:00-sun:06:00"
-   apply_immediately: true
-   # ...
+  inputs = {
+    settings = {
+      name_prefix        = "mydb"
+      engine_type        = "aurora-postgresql"
+      engine_version     = "15.3"
+      instance_size      = "db.r6g.large"
+      availability_zones = ["us-east-1a", "us-east-1b"]
+      backup = { retention_period = 7 }
+    }
+    vpc = {
+      vpc_id       = "vpc-xxxxxxxxxxxx"
+      subnet_group = "mydb-subnet-group"
+      subnet_ids   = ["subnet-aaaa", "subnet-bbbb"]
+    }
+    security_groups = { create = false, name = "sg-mydb" }
+    org = { organization_name = "acme", organization_unit = "platform", environment_type = "prod", environment_name = "us-east-1" }
+  }
   ```
   
-  In your Terragrunt configuration, reference these YAML values to populate the module variables
-  accordingly. Consult the main module source code and the `variables*.tf` files for full details
-  on all available variables (including their allowed types, defaults, and usage notes) as
-  annotated with `## YAML Input Format`, `## YAML Input`, or `## YAML Format`.
+  2) Multi-AZ with 2 replicas and per-replica overrides
+  
+  ```hcl
+  terraform { source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z" }
+  
+  inputs = {
+    settings = {
+      name_prefix        = "orders"
+      engine_type        = "aurora-postgresql"
+      engine_version     = "15.3"
+      instance_size      = "db.r6g.large"
+      availability_zones = ["us-east-1a", "us-east-1b"]
+      replicas = {
+        count = 2
+        replica_0 = {
+          availability_zone  = "us-east-1a"
+          promotion_tier     = 10
+          maintenance_window = "wed:03:00-wed:04:00"
+        }
+        replica_1 = {
+          availability_zone = "us-east-1b"
+          promotion_tier    = 15
+        }
+      }
+      backup = { retention_period = 7, copy_tags = true }
+      maintenance = { window = "sun:03:00-sun:04:00" }
+    }
+    vpc = { vpc_id = "vpc-xxxx", subnet_group = "orders-subnet-group", subnet_ids = ["subnet-a", "subnet-b"] }
+    security_groups = { create = false, name = "sg-orders" }
+  }
+  ```
+  
+  3) Serverless v2 with scaling configuration
+  
+  ```hcl
+  terraform { source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z" }
+  
+  inputs = {
+    settings = {
+      name_prefix    = "srvless"
+      engine_type    = "aurora-postgresql"
+      engine_version = "15.3"
+      instance_size  = "db.serverless"
+      serverless = {
+        enabled = true
+        v2      = true
+        scaling_configuration = {
+          min_capacity = 1
+          max_capacity = 10
+          seconds_until_auto_pause = 300
+        }
+      }
+      availability_zones = ["us-east-1a", "us-east-1b"]
+    }
+    vpc = { vpc_id = "vpc-xxxx", subnet_group = "srvless-subnet-group", subnet_ids = ["subnet-a", "subnet-b"] }
+    security_groups = { create = false, name = "sg-srvless" }
+  }
+  ```
+  
+  4) Restore from latest snapshot of an existing cluster
+  
+  ```hcl
+  terraform { source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z" }
+  
+  inputs = {
+    settings = {
+      name_prefix    = "restore"
+      engine_type    = "aurora-postgresql"
+      engine_version = "15.3"
+      instance_size  = "db.r6g.large"
+      recovery = {
+        enabled            = true
+        cluster_identifier = "rds-source-cluster-identifier" # or set snapshot_identifier instead
+        # snapshot_identifier = "rds-cluster-snapshot-name"
+      }
+      availability_zones = ["us-east-1a", "us-east-1b"]
+    }
+    vpc = { vpc_id = "vpc-xxxx", subnet_group = "restore-subnet-group", subnet_ids = ["subnet-a", "subnet-b"] }
+    security_groups = { create = false, name = "sg-restore" }
+  }
+  ```
+  
+  5) Managed password in AWS Secrets Manager with rotation
+  
+  ```hcl
+  terraform { source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z" }
+  
+  inputs = {
+    settings = {
+      name_prefix                 = "securedb"
+      engine_type                 = "aurora-postgresql"
+      engine_version              = "15.3"
+      instance_size               = "db.r6g.large"
+      managed_password            = true
+      managed_password_rotation   = true
+      password_secret_kms_key_id  = "alias/aws/rds" # or a custom KMS key ARN
+      password_rotation_period    = 90
+      rotation_duration           = "1h"
+      availability_zones          = ["us-east-1a", "us-east-1b"]
+    }
+    vpc = { vpc_id = "vpc-xxxx", subnet_group = "secure-subnet-group", subnet_ids = ["subnet-a", "subnet-b"] }
+    security_groups = { create = false, name = "sg-secure" }
+  }
+  ```
+  
+  6) Create a Global Cluster wrapper and attach this cluster
+  
+  ```hcl
+  terraform { source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z" }
+  
+  inputs = {
+    settings = {
+      name_prefix    = "globaldb"
+      engine_type    = "aurora-postgresql"
+      engine_version = "15.3"
+      instance_size  = "db.r6g.large"
+      global_cluster = {
+        create = true
+      }
+      availability_zones = ["us-east-1a", "us-east-1b"]
+    }
+    vpc = { vpc_id = "vpc-xxxx", subnet_group = "globaldb-subnet-group", subnet_ids = ["subnet-a", "subnet-b"] }
+    security_groups = { create = false, name = "sg-globaldb" }
+  }
+  ```
 
 # How to get started quickly
 quickstart: |-
+  Terragrunt
+  1) Ensure your AWS credentials and provider configuration are set (e.g., via environment variables or a root provider block in your boilerplate).
+  2) Create a new folder for your Aurora environment and a `terragrunt.hcl` using one of the examples above.
+  3) Initialize and apply:
+  
+     ```bash
+     terragrunt init
+     terragrunt plan
+     terragrunt apply
+     ```
+  
+  Terraform (without Terragrunt)
+  1) Create a Terraform root module and reference this module using `source = git::...ref=vX.Y.Z`.
+  2) Provide required inputs (at minimum `settings.name_prefix`, `settings.engine_type`, `settings.engine_version`, `settings.instance_size`, `vpc.subnet_group`, and `security_groups` configuration).
+  3) Initialize and apply:
+  
+     ```bash
+     terraform init
+     terraform plan
+     terraform apply
+     ```
+  
+  Notes
+  - Pin to released tags instead of a moving branch.
+  - Networking (VPC/Subnets) and Security Groups are expected to exist unless you opt-in to have them created in your environment wrapper.
+  - The module tags resources using your `org` object and `extra_tags` merge strategy.
 
 include:
   - "docs/targets.md"
