@@ -4,9 +4,10 @@
 #            Distributed Under Apache v2.0 License
 #
 locals {
-  rds_port    = try(var.settings.port, 5432)
-  db_name     = try(var.settings.database_name, "cluster_db")
-  master_user = try(var.settings.master_username, "cluster_root")
+  rds_port           = try(var.settings.port, 5432)
+  db_name            = try(var.settings.database_name, "cluster_db")
+  master_user        = try(var.settings.master_username, "cluster_root")
+  cluster_identifier = "rds-${var.settings.name_prefix}-${local.system_name}"
 }
 
 # Provision RDS global cluster only if settings.global_cluster.create=true
@@ -25,9 +26,16 @@ resource "random_string" "final_snapshot" {
   numeric = true
 }
 
+data "aws_db_cluster_snapshot" "recovery" {
+  count                          = try(var.settings.recovery.enabled, false) ? 1 : 0
+  db_cluster_identifier          = try(var.settings.recovery.cluster_identifier, local.cluster_identifier)
+  db_cluster_snapshot_identifier = try(var.settings.recovery.snapshot_identifier, null)
+  most_recent                    = true
+}
+
 # Provisions RDS instance only if rds_provision=true
 resource "aws_rds_cluster" "this" {
-  cluster_identifier            = "rds-${var.settings.name_prefix}-${local.system_name}"
+  cluster_identifier            = local.cluster_identifier
   engine                        = var.settings.engine_type
   engine_version                = var.settings.engine_version
   global_cluster_identifier     = try(var.settings.global_cluster.create, false) ? aws_rds_global_cluster.this[0].id : try(var.settings.global_cluster.id, null)
@@ -45,9 +53,10 @@ resource "aws_rds_cluster" "this" {
   vpc_security_group_ids        = local.security_group_ids
   storage_encrypted             = try(var.settings.storage.encryption.enabled, false)
   db_subnet_group_name          = var.vpc.subnet_group
-  kms_key_id                    = try(var.settings.storage.encryption.kms_key_id, null)
+  kms_key_id                    = try(var.settings.storage.encryption.kms_key_id, aws_kms_key.this[0].id, null)
   port                          = local.rds_port
   final_snapshot_identifier     = "rds-${var.settings.name_prefix}-${local.system_name}-cluster-final-snap-${random_string.final_snapshot.result}"
+  snapshot_identifier           = try(var.settings.recovery.enabled, false) ? data.aws_db_cluster_snapshot.recovery[0].id : null
   deletion_protection           = try(var.settings.deletion_protection, true)
   allow_major_version_upgrade   = try(var.settings.allow_upgrade, true)
   engine_mode = try(var.settings.serverless.enabled, false) ? (
@@ -70,6 +79,11 @@ resource "aws_rds_cluster" "this" {
       min_capacity             = try(var.settings.serverless.scaling_configuration.min_capacity, null)
       seconds_until_auto_pause = try(var.settings.serverless.scaling_configuration.seconds_until_auto_pause, null)
     }
+  }
+  lifecycle {
+    ignore_changes = [
+      snapshot_identifier,
+    ]
   }
   tags = local.all_tags
 }
