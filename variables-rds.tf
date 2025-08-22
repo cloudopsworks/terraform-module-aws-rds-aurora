@@ -6,6 +6,11 @@
 
 ##  YAML Input Format
 # settings:
+#   # Recovery
+#   recovery:
+#     enabled: true | false # If true, the cluster will be recovered from snapshot on same clustername or other Cluster
+#     cluster_identifier: "rds-cluster-name" # (optional) if recovery will be done from other Cluster
+#     snapshot_identifier: "rds-cluster-snapshot-name" # (optional) if recovery will be done from snapshot
 #   # Global Cluster
 #   global_cluster:
 #     create: true | false
