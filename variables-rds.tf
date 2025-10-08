@@ -34,6 +34,7 @@
 #     encryption:
 #       enabled: true
 #       kms_key_id: "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+#       kms_key_alias: "aws/rds"
 #     type: "" | aurora-iopt1 | io1 | io2
 #     iops: 1000 # required if type is io1 or io2
 #   monitoring:
