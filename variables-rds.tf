@@ -80,7 +80,7 @@
 #     authentication_roles: # List of IAM roles to attach to the cluster, optional
 #       - "arn:aws:iam::123456789012:role/role-name"
 #   cloudwatch:
-#     logs_exports:
+#     log_exports:
 #       - error
 #       - audit
 #       - general
