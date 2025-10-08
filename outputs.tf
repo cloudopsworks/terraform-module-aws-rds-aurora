@@ -62,11 +62,11 @@ output "cluster_secrets_credentials_arn" {
 }
 
 output "cluster_kms_key_id" {
-  value = try(var.settings.storage.encryption.enabled, false) ? try(var.settings.storage.encryption.kms_key_id, aws_kms_key.this[0].id) : null
+  value = try(var.settings.storage.encryption.enabled, false) ? try(aws_kms_key.this[0].id, data.aws_kms_alias.rds[0].target_key_id, var.settings.storage.encryption.kms_key_id) : null
 }
 
 output "cluster_kms_key_arn" {
-  value = try(var.settings.storage.encryption.enabled, false) && try(var.settings.storage.encryption.kms_key_id, "") == "" ? aws_kms_key.this[0].arn : null
+  value = try(var.settings.storage.encryption.enabled, false) ? try(aws_kms_key.this[0].arn, data.aws_kms_alias.rds[0].target_key_arn, data.aws_kms_key.rds[0].arn, var.settings.storage.encryption.kms_key_arn) : null
 }
 
 output "cluster_kms_key_alias" {
