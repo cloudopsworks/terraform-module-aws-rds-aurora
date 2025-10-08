@@ -1,7 +1,10 @@
 ##
-# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
-#            On GitHub: https://github.com/cloudopsworks
-#            Distributed Under Apache v2.0 License
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
 #
 
 ##  YAML Input Format
@@ -31,6 +34,10 @@
 #     encryption:
 #       enabled: true
 #       kms_key_id: "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+#     type: "" | aurora-iopt1 | io1 | io2
+#     iops: 1000 # required if type is io1 or io2
+#   monitoring:
+#     interval: 0 # in seconds, 0 to disable, Valid Values: 0, 1, 5, 10, 15, 30, 60.
 #   maintenance:
 #     window: "sun:03:00-sun:04:00"
 #   backup:
@@ -66,6 +73,11 @@
 #   rotation_lambda_name: "rds-rotation-lambda" # Name of the lambda function to rotate the password, required if managed_password_rotation is false
 #   password_rotation_period: 90 # Rotation period in days for the password, defaults to 90days
 #   rotation_duration: "1h" # Duration of the lambda function to rotate the password, defaults to 1h
+#   iam:
+#     database_authentication_enabled: true | false # defaults to true
+#     authentication_roles: # List of IAM roles to attach to the cluster, optional
+#       - "arn:aws:iam::123456789012:role/role-name"
+#   create_db_option
 #   hoop:
 #     enabled: true | false
 #     agent: hoop-agent-name

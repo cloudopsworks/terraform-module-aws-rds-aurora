@@ -1,7 +1,10 @@
 ##
-# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
-#            On GitHub: https://github.com/cloudopsworks
-#            Distributed Under Apache v2.0 License
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
 #
 locals {
   rds_port           = try(var.settings.port, 5432)
@@ -35,30 +38,36 @@ data "aws_db_cluster_snapshot" "recovery" {
 
 # Provisions RDS instance only if rds_provision=true
 resource "aws_rds_cluster" "this" {
-  cluster_identifier            = local.cluster_identifier
-  engine                        = var.settings.engine_type
-  engine_version                = var.settings.engine_version
-  global_cluster_identifier     = try(var.settings.global_cluster.create, false) ? aws_rds_global_cluster.this[0].id : try(var.settings.global_cluster.id, null)
-  availability_zones            = var.settings.availability_zones
-  database_name                 = local.db_name
-  master_username               = local.master_user
-  master_password               = try(var.settings.managed_password, false) ? null : random_password.randompass[0].result
-  manage_master_user_password   = try(var.settings.managed_password, false) ? true : null
-  master_user_secret_kms_key_id = try(var.settings.managed_password_rotation, false) ? try(var.settings.password_secret_kms_key_id, null) : null
-  backup_retention_period       = try(var.settings.backup.retention_period, 5)
-  preferred_backup_window       = try(var.settings.backup.window, "00:45-02:45")
-  preferred_maintenance_window  = try(var.settings.maintenance.window, "sun:03:00-sun:04:00")
-  copy_tags_to_snapshot         = try(var.settings.backup.copy_tags, true)
-  apply_immediately             = try(var.settings.apply_immediately, true)
-  vpc_security_group_ids        = local.security_group_ids
-  storage_encrypted             = try(var.settings.storage.encryption.enabled, false)
-  db_subnet_group_name          = var.vpc.subnet_group
-  kms_key_id                    = try(var.settings.storage.encryption.enabled, false) ? try(var.settings.storage.encryption.kms_key_id, aws_kms_key.this[0].id) : null
-  port                          = local.rds_port
-  final_snapshot_identifier     = "rds-${var.settings.name_prefix}-${local.system_name}-cluster-final-snap-${random_string.final_snapshot.result}"
-  snapshot_identifier           = try(var.settings.recovery.enabled, false) ? data.aws_db_cluster_snapshot.recovery[0].id : null
-  deletion_protection           = try(var.settings.deletion_protection, true)
-  allow_major_version_upgrade   = try(var.settings.allow_upgrade, true)
+  cluster_identifier                  = local.cluster_identifier
+  engine                              = var.settings.engine_type
+  engine_version                      = var.settings.engine_version
+  global_cluster_identifier           = try(var.settings.global_cluster.create, false) ? aws_rds_global_cluster.this[0].id : try(var.settings.global_cluster.id, null)
+  availability_zones                  = var.settings.availability_zones
+  database_name                       = local.db_name
+  master_username                     = local.master_user
+  master_password                     = try(var.settings.managed_password, false) ? null : random_password.randompass[0].result
+  manage_master_user_password         = try(var.settings.managed_password, false) ? true : null
+  master_user_secret_kms_key_id       = try(var.settings.managed_password_rotation, false) ? try(var.settings.password_secret_kms_key_id, null) : null
+  backup_retention_period             = try(var.settings.backup.retention_period, 5)
+  preferred_backup_window             = try(var.settings.backup.window, "00:45-02:45")
+  preferred_maintenance_window        = try(var.settings.maintenance.window, "sun:03:00-sun:04:00")
+  copy_tags_to_snapshot               = try(var.settings.backup.copy_tags, true)
+  apply_immediately                   = try(var.settings.apply_immediately, true)
+  vpc_security_group_ids              = local.security_group_ids
+  storage_encrypted                   = try(var.settings.storage.encryption.enabled, false)
+  db_subnet_group_name                = var.vpc.subnet_group
+  kms_key_id                          = try(var.settings.storage.encryption.enabled, false) ? try(var.settings.storage.encryption.kms_key_id, aws_kms_key.this[0].id) : null
+  port                                = local.rds_port
+  final_snapshot_identifier           = "rds-${var.settings.name_prefix}-${local.system_name}-cluster-final-snap-${random_string.final_snapshot.result}"
+  snapshot_identifier                 = try(var.settings.recovery.enabled, false) ? data.aws_db_cluster_snapshot.recovery[0].id : null
+  deletion_protection                 = try(var.settings.deletion_protection, true)
+  allow_major_version_upgrade         = try(var.settings.allow_upgrade, true)
+  iam_database_authentication_enabled = try(var.settings.iam.database_authentication_enabled, true)
+  iam_roles                           = try(var.settings.iam.authentication_roles, null)
+  iops                                = try(var.settings.storage.iops, null)
+  storage_type                        = try(var.settings.storage.type, null)
+  monitoring_interval                 = try(var.settings.monitoring.interval, null)
+  monitoring_role_arn                 = try(var.settings.monitoring.interval, 0) > 0 ? aws_iam_role.rds_monitoring[0].arn : null
   engine_mode = try(var.settings.serverless.enabled, false) ? (
     try(var.settings.serverless.v2, false) ? "provisioned" : "serverless"
   ) : try(var.settings.engine_mode, null)
