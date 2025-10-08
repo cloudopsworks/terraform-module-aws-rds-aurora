@@ -62,7 +62,7 @@ resource "aws_kms_alias" "this" {
 }
 
 data "aws_kms_alias" "rds" {
-  count = try(var.settings.storage.encryption.enabled, false) && try(var.settings.storage.encryption.kms_key_alias, "") == "" ? 1 : 0
+  count = try(var.settings.storage.encryption.enabled, false) && try(var.settings.storage.encryption.kms_key_alias, "") != "" ? 1 : 0
   name  = var.settings.storage.encryption.kms_key_alias
 }
 
