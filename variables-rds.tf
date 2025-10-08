@@ -79,7 +79,16 @@
 #     database_authentication_enabled: true | false # defaults to true
 #     authentication_roles: # List of IAM roles to attach to the cluster, optional
 #       - "arn:aws:iam::123456789012:role/role-name"
-#   create_db_option
+#   cloudwatch:
+#     logs_exports:
+#       - error
+#       - audit
+#       - general
+#       - iam-db-auth-error
+#       - instance
+#       - postgresql # (PostgreSQL)
+#       - slowquery
+#   #create_db_option
 #   hoop:
 #     enabled: true | false
 #     agent: hoop-agent-name
