@@ -7,11 +7,11 @@
 #     Distributed Under Apache v2.0 License
 #
 locals {
-  rds_port           = try(var.settings.port, 5432)
-  db_name            = try(var.settings.database_name, "cluster_db")
-  master_user        = try(var.settings.master_username, "cluster_root")
-  cluster_identifier = "rds-${var.settings.name_prefix}-${local.system_name}"
-  default_exported_logs = strcontains(var.settings.engine_type, "postgres") ? ["postgresql", "upgrade"] : ["alert", "audit", "error"]
+  rds_port              = try(var.settings.port, 5432)
+  db_name               = try(var.settings.database_name, "cluster_db")
+  master_user           = try(var.settings.master_username, "cluster_root")
+  cluster_identifier    = "rds-${var.settings.name_prefix}-${local.system_name}"
+  default_exported_logs = strcontains(var.settings.engine_type, "postgres") ? ["postgresql", "audit"] : ["alert", "audit", "error"]
 }
 
 # Provision RDS global cluster only if settings.global_cluster.create=true
