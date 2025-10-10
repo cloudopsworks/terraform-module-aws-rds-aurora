@@ -11,6 +11,7 @@ locals {
   db_name            = try(var.settings.database_name, "cluster_db")
   master_user        = try(var.settings.master_username, "cluster_root")
   cluster_identifier = "rds-${var.settings.name_prefix}-${local.system_name}"
+  default_exported_logs = strcontains(var.settings.engine_type, "postgres") ? ["postgresql", "upgrade"] : ["alert", "audit", "error"]
 }
 
 # Provision RDS global cluster only if settings.global_cluster.create=true
@@ -68,7 +69,7 @@ resource "aws_rds_cluster" "this" {
   storage_type                        = try(var.settings.storage.type, null)
   monitoring_interval                 = try(var.settings.monitoring.interval, null)
   monitoring_role_arn                 = try(var.settings.monitoring.interval, 0) > 0 ? aws_iam_role.rds_monitoring[0].arn : null
-  enabled_cloudwatch_logs_exports     = try(var.settings.cloudwatch.log_exports, null)
+  enabled_cloudwatch_logs_exports     = try(var.settings.cloudwatch.log_exports, local.default_exported_logs)
   engine_mode = try(var.settings.serverless.enabled, false) ? (
     try(var.settings.serverless.v2, false) ? "provisioned" : "serverless"
   ) : try(var.settings.engine_mode, null)
