@@ -20,8 +20,8 @@
 #     id: "arn:aws:rds:us-east-1:123456789012:global-cluster:mydb" # Optional conflicts with create = true
 #   # Cluster general
 #   name_prefix: "mydb"
-#   database_name: "mydb"
-#   master_username: "admin"
+#   database_name: "mydb"          # (note) Must Be `null` if `migration.enabled=true`
+#   master_username: "admin"       # (note) Must Be `null` if `migration.enabled=true`
 #   engine_type: "aurora-postgresql" or "aurora-mysql"
 #   engine_version: "10.7"
 #   engine_mode: "provisioned" | "serverless" # (optional) if serverless.enabled is true
@@ -63,13 +63,13 @@
 #     v2: true | false
 #     scaling_configuration:
 #       # for V2 and V1
-#       min_capacity: 1
-#       max_capacity: 10
+#       min_capacity: 0.0
+#       max_capacity: 5.5
 #       seconds_until_auto_pause: 300
 #       # V1 only
 #       auto_pause: true
 #       timeout_action: ForceApplyCapacityChange
-#   managed_password: true | false # If true, the password will be managed by AWS Secrets Manager, defaults to false
+#   managed_password: true | false # If true, the password will be managed by AWS Secrets Manager, defaults to false, do not set if `migration.enabled=true`
 #   managed_password_rotation: true | false # If true, the password will be rotated automatically by AWS Secrets Manager, defaults to false
 #   password_secret_kms_key_id: "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012" # KMS key for the password secret or Alias
 #   rotation_lambda_name: "rds-rotation-lambda" # Name of the lambda function to rotate the password, required if managed_password_rotation is false
@@ -88,10 +88,18 @@
 #       - instance
 #       - postgresql # (PostgreSQL)
 #       - slowquery
-#   #create_db_option
+#   # Parameter Group customization
+#   parameter_group:
+#     create: true | false  # (optional) defaults to false
+#     family: "aurora-postgresql10" | "aurora-mysql5.7" # (optional) if not specified will be interpolated with engine_type and engine_version
+#     skip_destroy: true | false    # (Optional) if true, the parameter group will not be destroyed
+#     parameters:
+#       - name: "PARAM NAME"
+#         value: "PARAM VALUE"
+#         apply_method: "immediate" | "pending-reboot" # (optional)
 #   migration: (optional) Migration from RDS Database
 #     enabled: true | false
-#     promote: true | false
+#     in_progress: true | false
 #     source_rds_instance: "RDS Instance Identifier"
 #   hoop:
 #     enabled: true | false
@@ -103,6 +111,11 @@
 #     sns_topic_name: "my-sns-topic" # Required if sns_topic_arn is not provided
 #     categories: ["availability", "deletion", "failover", "failure", "low storage", "maintenance", "notification", "read replica", "recovery", "restore", "security", "storage"]
 #     instances: true | false # If true, the event subscription will be created for instances.
+#   custom_endpoints:           # (optional) list of declaration of endpoints
+#     - name: "custom-endpoint-1"
+#       type: "READER" | "WRITER" | "ANY"
+#       static_members: ["rds-instance-1", "rds-instance-2"]
+#       excluded_members: ["rds-instance-3"]
 variable "settings" {
   description = "Settings for RDS instance"
   type        = any
