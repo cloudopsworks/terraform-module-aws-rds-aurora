@@ -125,7 +125,7 @@ resource "aws_rds_cluster_instance" "this" {
 }
 
 resource "aws_rds_cluster_endpoint" "this" {
-  for_each                    = try(var.settings.custom_endpoints, [])
+  for_each                    = { for endpoint in try(var.settings.custom_endpoints, []) : endpoint.name => endpoint }
   cluster_identifier          = aws_rds_cluster.this.id
   cluster_endpoint_identifier = each.value.name
   custom_endpoint_type        = upper(each.value.type)
