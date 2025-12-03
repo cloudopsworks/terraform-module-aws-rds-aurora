@@ -17,7 +17,7 @@ locals {
 # Provision RDS global cluster only if settings.global_cluster.create=true
 resource "aws_rds_global_cluster" "this" {
   count                     = try(var.settings.global_cluster.create, false) ? 1 : 0
-  global_cluster_identifier = "rds-${var.settings.name_prefix}-${local.system_name}-global"
+  global_cluster_identifier = "${local.cluster_identifier}-global"
   engine                    = var.settings.engine_type
   engine_version            = var.settings.engine_version
 }
@@ -64,7 +64,7 @@ resource "aws_rds_cluster" "this" {
   db_subnet_group_name                = var.vpc.subnet_group
   kms_key_id                          = try(var.settings.storage.encryption.enabled, false) ? try(aws_kms_key.this[0].arn, data.aws_kms_alias.rds[0].target_key_arn, data.aws_kms_key.rds[0].arn, var.settings.storage.encryption.kms_key_arn) : null
   port                                = local.rds_port
-  final_snapshot_identifier           = "rds-${var.settings.name_prefix}-${local.system_name}-cluster-final-snap-${random_string.final_snapshot.result}"
+  final_snapshot_identifier           = "${local.cluster_identifier}-cluster-final-snap-${random_string.final_snapshot.result}"
   snapshot_identifier                 = try(var.settings.recovery.enabled, false) ? try(data.aws_db_cluster_snapshot.recovery[0].id) : null
   deletion_protection                 = try(var.settings.deletion_protection, true)
   allow_major_version_upgrade         = try(var.settings.allow_upgrade, true)
@@ -102,7 +102,9 @@ resource "aws_rds_cluster" "this" {
       snapshot_identifier,
     ]
   }
-  tags = local.all_tags
+  tags = merge(local.all_tags, {
+    cluster-identifier = aws_rds_cluster.this.cluster_identifier
+  }, local.backup_tags)
 }
 
 resource "aws_rds_cluster_instance" "this" {
@@ -119,9 +121,10 @@ resource "aws_rds_cluster_instance" "this" {
   availability_zone            = try(var.settings.replicas[format("replica_%s", count.index)].availability_zone, null)
   promotion_tier               = try(var.settings.replicas[format("replica_%s", count.index)].promotion_tier, null)
   preferred_maintenance_window = try(var.settings.replicas[format("replica_%s", count.index)].maintenance_window, var.settings.maintenance.window, "sun:03:00-sun:04:00")
+  db_parameter_group_name      = try(var.settings.parameter_group.create, false) ? aws_db_parameter_group.this[0].name : null
   tags = merge(local.all_tags, {
     cluster-identifier = aws_rds_cluster.this.cluster_identifier
-    instance-name = "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
+    instance-name      = "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
   }, local.backup_tags)
 }
 
@@ -133,4 +136,28 @@ resource "aws_rds_cluster_endpoint" "this" {
   static_members              = try(each.value.static_members, null)
   excluded_members            = try(each.value.excluded_members, null)
   tags                        = local.all_tags
+}
+
+resource "aws_db_parameter_group" "this" {
+  count       = try(var.settings.parameter_group.create, false) ? 1 : 0
+  name_prefix = "${local.cluster_identifier}-param-group"
+  description = "RDS Cluster Parameter Group for ${local.cluster_identifier}"
+  family      = try(var.settings.parameter_group.family, format("%s%s", var.settings.engine_type, var.settings.engine_version))
+
+  dynamic "parameter" {
+    for_each = try(var.settings.parameter_group.parameters, [])
+    content {
+      name         = parameter.value.name
+      value        = parameter.value.value
+      apply_method = lookup(parameter.value, "apply_method", null)
+    }
+  }
+  skip_destroy = try(var.settings.parameter_group.skip_destroy, false)
+  tags = merge(local.all_tags, {
+    cluster-identifier = aws_rds_cluster.this.cluster_identifier
+  })
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
