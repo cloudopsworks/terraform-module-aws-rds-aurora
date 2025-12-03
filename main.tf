@@ -31,10 +31,17 @@ resource "random_string" "final_snapshot" {
 }
 
 data "aws_db_cluster_snapshot" "recovery" {
-  count                          = try(var.settings.recovery.enabled, false) ? 1 : 0
+  count                          = try(var.settings.recovery.enabled, false) && try(var.settings.recovery.from_cluster, true) ? 1 : 0
   db_cluster_identifier          = try(var.settings.recovery.cluster_identifier, local.cluster_identifier)
   db_cluster_snapshot_identifier = try(var.settings.recovery.snapshot_identifier, null)
   most_recent                    = true
+}
+
+data "aws_db_snapshot" "recovery" {
+  count                  = try(var.settings.recovery.enabled, false) && !try(var.settings.recovery.from_cluster, true) ? 1 : 0
+  db_instance_identifier = try(var.settings.recovery.instance_identifier, null)
+  db_snapshot_identifier = try(var.settings.recovery.snapshot_identifier, null)
+  most_recent            = true
 }
 
 # Provisions RDS instance only if rds_provision=true

@@ -165,6 +165,9 @@ Usage reference (inputs):
     - enabled (bool): If true, the cluster will be recovered from a snapshot (same or other cluster).
     - cluster_identifier (string, optional): Source cluster identifier for recovery.
     - snapshot_identifier (string, optional): Snapshot identifier for recovery.
+    - from_cluster: true | false # (optional) true if recovery is from cluster snapshot, false if from instance snapshot, defaults to true
+    - instance_identifier: "rds-instance-name" # (optional) if recovery will be done from instance snapshot, required when from_cluster=false.
+    - snapshot_identifier: "rds-cluster-snapshot-name/rds-instance-name" # (optional) if recovery will be done from snapshot
   - global_cluster:
     - create (bool): If true, create a new global cluster resource.
     - id (string, optional): Use existing Global Cluster ARN/ID (conflicts with create).
@@ -499,6 +502,7 @@ Available targets:
 | [time_rotating.randompass](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/rotating) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_db_cluster_snapshot.recovery](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/db_cluster_snapshot) | data source |
+| [aws_db_snapshot.recovery](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/db_snapshot) | data source |
 | [aws_iam_policy_document.rds_kms_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.rds_monitoring](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_kms_alias.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_alias) | data source |
