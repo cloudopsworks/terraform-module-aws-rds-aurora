@@ -120,7 +120,8 @@ resource "aws_rds_cluster_instance" "this" {
   promotion_tier               = try(var.settings.replicas[format("replica_%s", count.index)].promotion_tier, null)
   preferred_maintenance_window = try(var.settings.replicas[format("replica_%s", count.index)].maintenance_window, var.settings.maintenance.window, "sun:03:00-sun:04:00")
   tags = merge(local.all_tags, {
-    instance-name : "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
+    cluster-identifier = aws_rds_cluster.this.cluster_identifier
+    instance-name = "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
   }, local.backup_tags)
 }
 
