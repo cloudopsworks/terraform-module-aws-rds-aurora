@@ -37,6 +37,11 @@ data "aws_db_cluster_snapshot" "recovery" {
   most_recent                    = true
 }
 
+data "aws_db_instance" "migration_source" {
+  count               = try(var.settings.migration.enabled, false) ? 1 : 0
+  db_instance_identifier = var.settings.migration.source_rds_instance
+}
+
 # Provisions RDS instance only if rds_provision=true
 resource "aws_rds_cluster" "this" {
   cluster_identifier                  = local.cluster_identifier
@@ -70,7 +75,7 @@ resource "aws_rds_cluster" "this" {
   monitoring_interval                 = try(var.settings.monitoring.interval, null)
   monitoring_role_arn                 = try(var.settings.monitoring.interval, 0) > 0 ? aws_iam_role.rds_monitoring[0].arn : null
   enabled_cloudwatch_logs_exports     = try(var.settings.cloudwatch.log_exports, local.default_exported_logs)
-  replication_source_identifier       = try(var.settings.migration.enabled, false) ? var.settings.migration.source_rds_instance : null
+  replication_source_identifier       = try(var.settings.migration.enabled, false) ? data.aws_db_instance.migration_source[0].db_instance_arn : null
   engine_mode = try(var.settings.serverless.enabled, false) ? (
     try(var.settings.serverless.v2, false) ? "provisioned" : "serverless"
   ) : try(var.settings.engine_mode, null)
