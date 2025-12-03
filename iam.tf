@@ -7,6 +7,8 @@
 #     Distributed Under Apache v2.0 License
 #
 
+data "aws_caller_identity" "current" {}
+
 data "aws_iam_policy_document" "rds_monitoring" {
   count = try(var.settings.monitoring.interval, 0) > 0 ? 1 : 0
   statement {
