@@ -125,6 +125,9 @@ usage: |-
       - enabled (bool): If true, the cluster will be recovered from a snapshot (same or other cluster).
       - cluster_identifier (string, optional): Source cluster identifier for recovery.
       - snapshot_identifier (string, optional): Snapshot identifier for recovery.
+      - from_cluster: true | false # (optional) true if recovery is from cluster snapshot, false if from instance snapshot, defaults to true
+      - instance_identifier: "rds-instance-name" # (optional) if recovery will be done from instance snapshot, required when from_cluster=false.
+      - snapshot_identifier: "rds-cluster-snapshot-name/rds-instance-name" # (optional) if recovery will be done from snapshot
     - global_cluster:
       - create (bool): If true, create a new global cluster resource.
       - id (string, optional): Use existing Global Cluster ARN/ID (conflicts with create).
