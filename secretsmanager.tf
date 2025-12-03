@@ -10,7 +10,7 @@
 locals {
   rds_credentials = {
     username            = local.master_user
-    password            = try(var.settings.managed_password, false) ? null : random_password.randompass[0].result
+    password            = try(var.settings.managed_password, false) ? null : (!try(var.settings.migration.enabled, false) ? random_password.randompass[0].result : null)
     engine              = aws_rds_cluster.this.engine
     host                = aws_rds_cluster.this.endpoint
     port                = aws_rds_cluster.this.port
