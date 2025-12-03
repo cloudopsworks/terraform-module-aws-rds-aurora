@@ -54,11 +54,11 @@ output "rds_global_cluster_id" {
 }
 
 output "cluster_secrets_credentials" {
-  value = try(var.settings.managed_password, false) ? local.master_user_secret_name : aws_secretsmanager_secret.rds[0].name
+  value = try(var.settings.managed_password, false) ? local.master_user_secret_name : (!try(var.settings.migration.enabled, false) ? aws_secretsmanager_secret.rds[0].name : null)
 }
 
 output "cluster_secrets_credentials_arn" {
-  value = try(var.settings.managed_password, false) ? try(aws_rds_cluster.this.master_user_secret[0].secret_arn, "") : aws_secretsmanager_secret.rds[0].arn
+  value = try(var.settings.managed_password, false) ? try(aws_rds_cluster.this.master_user_secret[0].secret_arn, "") : (!try(var.settings.migration.enabled, false) ? aws_secretsmanager_secret.rds[0].arn : null)
 }
 
 output "cluster_kms_key_id" {
