@@ -123,3 +123,13 @@ resource "aws_rds_cluster_instance" "this" {
     instance-name : "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
   }, local.backup_tags)
 }
+
+resource "aws_rds_cluster_endpoint" "this" {
+  for_each                    = try(var.settings.custom_endpoints, [])
+  cluster_identifier          = aws_rds_cluster.this.id
+  cluster_endpoint_identifier = each.value.name
+  custom_endpoint_type        = upper(each.value.type)
+  static_members              = try(each.value.static_members, null)
+  excluded_members            = try(each.value.excluded_members, null)
+  tags                        = local.all_tags
+}
