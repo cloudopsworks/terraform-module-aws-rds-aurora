@@ -38,7 +38,7 @@ data "aws_db_cluster_snapshot" "recovery" {
 }
 
 data "aws_db_instance" "migration_source" {
-  count               = try(var.settings.migration.enabled, false) ? 1 : 0
+  count                  = try(var.settings.migration.enabled, false) ? 1 : 0
   db_instance_identifier = var.settings.migration.source_rds_instance
 }
 
