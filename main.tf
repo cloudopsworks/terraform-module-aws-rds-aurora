@@ -67,7 +67,7 @@ resource "aws_rds_cluster" "this" {
   kms_key_id                          = try(var.settings.storage.encryption.enabled, false) ? try(aws_kms_key.this[0].arn, data.aws_kms_alias.rds[0].target_key_arn, data.aws_kms_key.rds[0].arn, var.settings.storage.encryption.kms_key_arn) : null
   port                                = local.rds_port
   final_snapshot_identifier           = "rds-${var.settings.name_prefix}-${local.system_name}-cluster-final-snap-${random_string.final_snapshot.result}"
-  snapshot_identifier                 = try(var.settings.recovery.enabled, false) ? data.aws_db_cluster_snapshot.recovery[0].id : null
+  snapshot_identifier                 = try(var.settings.recovery.enabled, false) ? try(data.aws_db_cluster_snapshot.recovery[0].id, data.aws_db_snapshot.recovery[0].id) : null
   deletion_protection                 = try(var.settings.deletion_protection, true)
   allow_major_version_upgrade         = try(var.settings.allow_upgrade, true)
   iam_database_authentication_enabled = try(var.settings.iam.database_authentication_enabled, true)
