@@ -103,7 +103,7 @@ resource "aws_rds_cluster" "this" {
     ]
   }
   tags = merge(local.all_tags, {
-    cluster-identifier = aws_rds_cluster.this.cluster_identifier
+    cluster-identifier = local.cluster_identifier
   }, local.backup_tags)
 }
 
@@ -123,7 +123,7 @@ resource "aws_rds_cluster_instance" "this" {
   preferred_maintenance_window = try(var.settings.replicas[format("replica_%s", count.index)].maintenance_window, var.settings.maintenance.window, "sun:03:00-sun:04:00")
   db_parameter_group_name      = try(var.settings.parameter_group.create, false) ? aws_db_parameter_group.this[0].name : null
   tags = merge(local.all_tags, {
-    cluster-identifier = aws_rds_cluster.this.cluster_identifier
+    cluster-identifier = local.cluster_identifier
     instance-name      = "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
   }, local.backup_tags)
 }
@@ -154,7 +154,7 @@ resource "aws_db_parameter_group" "this" {
   }
   skip_destroy = try(var.settings.parameter_group.skip_destroy, false)
   tags = merge(local.all_tags, {
-    cluster-identifier = aws_rds_cluster.this.cluster_identifier
+    cluster-identifier = local.cluster_identifier
   })
 
   lifecycle {
