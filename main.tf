@@ -108,7 +108,7 @@ resource "aws_rds_cluster" "this" {
 resource "aws_rds_cluster_instance" "this" {
   count                        = try(var.settings.replicas.count, 1)
   identifier                   = "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
-  cluster_identifier           = aws_rds_cluster.this.id
+  cluster_identifier           = aws_rds_cluster.this.cluster_identifier
   instance_class               = var.settings.instance_size
   engine                       = var.settings.engine_type
   engine_version               = var.settings.engine_version
