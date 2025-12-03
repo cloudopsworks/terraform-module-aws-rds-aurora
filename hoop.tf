@@ -8,7 +8,7 @@
 #
 
 data "aws_secretsmanager_secret" "rds_managed" {
-  count = try(var.settings.managed_password, false) && try(var.settings.hoop.enabled, false) && !try(var.settings.migration.in_progress, false) > 0 ? 1 : 0
+  count = try(var.settings.managed_password, false) && try(var.settings.hoop.enabled, false) && !try(var.settings.migration.in_progress, false) ? 1 : 0
   arn   = aws_rds_cluster.this.master_user_secret[count.index].secret_arn
 }
 
@@ -16,7 +16,7 @@ locals {
   master_user_secret_name_arn = try(split(":", aws_rds_cluster.this.master_user_secret[0].secret_arn), [])
   master_user_secret_name     = length(local.master_user_secret_name_arn) - 1 >= 0 ? local.master_user_secret_name_arn[length(local.master_user_secret_name_arn) - 1] : ""
   hoop_tags                   = length(try(var.settings.hoop.tags, [])) > 0 ? join(" ", [for v in var.settings.hoop.tags : "--tags \"${v}\""]) : ""
-  hoop_connection_postgres_managed = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && !try(var.settings.migration.in_progress, false) > 0 ? (<<EOT
+  hoop_connection_postgres_managed = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && !try(var.settings.migration.in_progress, false) ? (<<EOT
 hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   --agent ${var.settings.hoop.agent} \
   --type database/postgres \
@@ -44,7 +44,7 @@ hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   ${local.hoop_tags}
 EOT
   ) : null
-  hoop_connection_mysql_managed = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && !try(var.settings.migration.in_progress, false) > 0 ? (<<EOT
+  hoop_connection_mysql_managed = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && !try(var.settings.migration.in_progress, false) ? (<<EOT
 hoop admin create connection ${aws_rds_cluster.this.cluster_identifier}-ow \
   --agent ${var.settings.hoop.agent} \
   --type database/mysql \
