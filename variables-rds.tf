@@ -89,6 +89,10 @@
 #       - postgresql # (PostgreSQL)
 #       - slowquery
 #   #create_db_option
+#   migration: (optional) Migration from RDS Database
+#     enabled: true | false
+#     promote: true | false
+#     source_rds_instance: "RDS Instance Identifier"
 #   hoop:
 #     enabled: true | false
 #     agent: hoop-agent-name

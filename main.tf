@@ -37,6 +37,11 @@ data "aws_db_cluster_snapshot" "recovery" {
   most_recent                    = true
 }
 
+data "aws_db_instance" "migration_source" {
+  count                  = try(var.settings.migration.enabled, false) ? 1 : 0
+  db_instance_identifier = var.settings.migration.source_rds_instance
+}
+
 # Provisions RDS instance only if rds_provision=true
 resource "aws_rds_cluster" "this" {
   cluster_identifier                  = local.cluster_identifier
@@ -46,7 +51,7 @@ resource "aws_rds_cluster" "this" {
   availability_zones                  = var.settings.availability_zones
   database_name                       = local.db_name
   master_username                     = local.master_user
-  master_password                     = try(var.settings.managed_password, false) ? null : random_password.randompass[0].result
+  master_password                     = try(var.settings.managed_password, false) ? null : (!try(var.settings.migration.enabled, false) ? random_password.randompass[0].result : null)
   manage_master_user_password         = try(var.settings.managed_password, false) ? true : null
   master_user_secret_kms_key_id       = try(var.settings.managed_password_rotation, false) ? try(var.settings.password_secret_kms_key_id, null) : null
   backup_retention_period             = try(var.settings.backup.retention_period, 5)
@@ -70,6 +75,7 @@ resource "aws_rds_cluster" "this" {
   monitoring_interval                 = try(var.settings.monitoring.interval, null)
   monitoring_role_arn                 = try(var.settings.monitoring.interval, 0) > 0 ? aws_iam_role.rds_monitoring[0].arn : null
   enabled_cloudwatch_logs_exports     = try(var.settings.cloudwatch.log_exports, local.default_exported_logs)
+  replication_source_identifier       = try(var.settings.migration.enabled, false) ? data.aws_db_instance.migration_source[0].db_instance_arn : null
   engine_mode = try(var.settings.serverless.enabled, false) ? (
     try(var.settings.serverless.v2, false) ? "provisioned" : "serverless"
   ) : try(var.settings.engine_mode, null)
@@ -102,7 +108,7 @@ resource "aws_rds_cluster" "this" {
 resource "aws_rds_cluster_instance" "this" {
   count                        = try(var.settings.replicas.count, 1)
   identifier                   = "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
-  cluster_identifier           = aws_rds_cluster.this.id
+  cluster_identifier           = aws_rds_cluster.this.cluster_identifier
   instance_class               = var.settings.instance_size
   engine                       = var.settings.engine_type
   engine_version               = var.settings.engine_version
@@ -114,6 +120,17 @@ resource "aws_rds_cluster_instance" "this" {
   promotion_tier               = try(var.settings.replicas[format("replica_%s", count.index)].promotion_tier, null)
   preferred_maintenance_window = try(var.settings.replicas[format("replica_%s", count.index)].maintenance_window, var.settings.maintenance.window, "sun:03:00-sun:04:00")
   tags = merge(local.all_tags, {
-    instance-name : "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
+    cluster-identifier = aws_rds_cluster.this.cluster_identifier
+    instance-name = "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
   }, local.backup_tags)
+}
+
+resource "aws_rds_cluster_endpoint" "this" {
+  for_each                    = { for endpoint in try(var.settings.custom_endpoints, []) : endpoint.name => endpoint }
+  cluster_identifier          = aws_rds_cluster.this.cluster_identifier
+  cluster_endpoint_identifier = each.value.name
+  custom_endpoint_type        = upper(each.value.type)
+  static_members              = try(each.value.static_members, null)
+  excluded_members            = try(each.value.excluded_members, null)
+  tags                        = local.all_tags
 }
