@@ -13,9 +13,7 @@
 #   recovery:
 #     enabled: true | false # If true, the cluster will be recovered from snapshot on same clustername or other Cluster
 #     cluster_identifier: "rds-cluster-name" # (optional) if recovery will be done from other Cluster
-#     from_cluster: true | false # (optional) true if recovery is from cluster snapshot, false if from instance snapshot, defaults to true
-#     instance_identifier: "rds-instance-name" # (optional) if recovery will be done from instance snapshot, required when from_cluster=false.
-#     snapshot_identifier: "rds-cluster-snapshot-name/rds-instance-name" # (optional) if recovery will be done from snapshot
+#     snapshot_identifier: "rds-cluster-snapshot-name" # (optional) if recovery will be done from snapshot
 #   # Global Cluster
 #   global_cluster:
 #     create: true | false

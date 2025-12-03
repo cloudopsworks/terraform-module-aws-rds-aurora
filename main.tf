@@ -31,17 +31,10 @@ resource "random_string" "final_snapshot" {
 }
 
 data "aws_db_cluster_snapshot" "recovery" {
-  count                          = try(var.settings.recovery.enabled, false) && try(var.settings.recovery.from_cluster, true) ? 1 : 0
+  count                          = try(var.settings.recovery.enabled, false) ? 1 : 0
   db_cluster_identifier          = try(var.settings.recovery.cluster_identifier, local.cluster_identifier)
   db_cluster_snapshot_identifier = try(var.settings.recovery.snapshot_identifier, null)
   most_recent                    = true
-}
-
-data "aws_db_snapshot" "recovery" {
-  count                  = try(var.settings.recovery.enabled, false) && !try(var.settings.recovery.from_cluster, true) ? 1 : 0
-  db_instance_identifier = try(var.settings.recovery.instance_identifier, null)
-  db_snapshot_identifier = try(var.settings.recovery.snapshot_identifier, null)
-  most_recent            = true
 }
 
 # Provisions RDS instance only if rds_provision=true
@@ -67,7 +60,7 @@ resource "aws_rds_cluster" "this" {
   kms_key_id                          = try(var.settings.storage.encryption.enabled, false) ? try(aws_kms_key.this[0].arn, data.aws_kms_alias.rds[0].target_key_arn, data.aws_kms_key.rds[0].arn, var.settings.storage.encryption.kms_key_arn) : null
   port                                = local.rds_port
   final_snapshot_identifier           = "rds-${var.settings.name_prefix}-${local.system_name}-cluster-final-snap-${random_string.final_snapshot.result}"
-  snapshot_identifier                 = try(var.settings.recovery.enabled, false) ? try(data.aws_db_cluster_snapshot.recovery[0].id, data.aws_db_snapshot.recovery[0].id) : null
+  snapshot_identifier                 = try(var.settings.recovery.enabled, false) ? try(data.aws_db_cluster_snapshot.recovery[0].id) : null
   deletion_protection                 = try(var.settings.deletion_protection, true)
   allow_major_version_upgrade         = try(var.settings.allow_upgrade, true)
   iam_database_authentication_enabled = try(var.settings.iam.database_authentication_enabled, true)
