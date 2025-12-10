@@ -58,6 +58,7 @@
 #       maintenance_window: "wed:03:00-wed:04:00"
 #     replica_1:
 #       availability_zone: "us-east-1b"
+#       instance_size: "db.r5.xlarge"
 #   instance_size: "db.r5.large" | "db.serverless"
 #   serverless:
 #     enabled: true | false

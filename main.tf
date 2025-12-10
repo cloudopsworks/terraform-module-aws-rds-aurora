@@ -111,7 +111,7 @@ resource "aws_rds_cluster_instance" "this" {
   count                        = try(var.settings.replicas.count, 1)
   identifier                   = "${local.cluster_identifier}-${count.index}"
   cluster_identifier           = aws_rds_cluster.this.cluster_identifier
-  instance_class               = var.settings.instance_size
+  instance_class               = try(var.settings.replicas[format("replica_%s", count.index)].instance_size, var.settings.instance_size)
   engine                       = var.settings.engine_type
   engine_version               = var.settings.engine_version
   auto_minor_version_upgrade   = try(var.settings.auto_minor_upgrade, false)
