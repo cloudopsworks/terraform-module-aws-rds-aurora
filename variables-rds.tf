@@ -41,6 +41,12 @@
 #     iops: 1000 # required if type is io1 or io2
 #   monitoring:
 #     interval: 0 # in seconds, 0 to disable, Valid Values: 0, 1, 5, 10, 15, 30, 60.
+#   performance:
+#     enabled: true | false   # (optional) set to true to enable performance monitoring
+#     encryption:
+#       enabled: true | false   # (optional) set to true to enable encryption of performance indicators
+#       kms_key_alias: "kms alias"  # (optional) set to an exisisting KMS alias
+#       kms_key_id: "aws:arn:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"  # (optional) set to an exisisting KMS Key ID
 #   maintenance:
 #     window: "sun:03:00-sun:04:00"
 #   backup:
