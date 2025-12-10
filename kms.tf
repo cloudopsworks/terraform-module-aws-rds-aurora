@@ -72,12 +72,18 @@ data "aws_kms_key" "rds" {
 }
 
 data "aws_kms_alias" "perf" {
-  count = try(var.settings.performance.enabled, false) && try(var.settings.performance.encryption.enabled, false) && try(var.settings.performance.kms_key_alias, "") != "" ? 1 : 0
-  name  = startswith("alias/", var.settings.performance.kms_key_alias) ? var.settings.performance.kms_key_alias : "alias/${var.settings.performance.kms_key_alias}"
+  count = try(var.settings.performance.enabled, false) && try(var.settings.performance.encryption.enabled, false) && try(var.settings.performance.encryption.kms_key_alias, "") != "" ? 1 : 0
+  name  = startswith("alias/", var.settings.performance.encryption.kms_key_alias) ? var.settings.performance.kms_key_alias : "alias/${var.settings.performance.encryption.kms_key_alias}"
 }
 
+data "aws_kms_key" "perf" {
+  count  = try(var.settings.performance.enabled, false) && try(var.settings.performance.encryption.enabled, false) && try(var.settings.performance.encryption.kms_key_id, "") != "" ? 1 : 0
+  key_id = var.settings.performance.encryption.kms_key_id
+}
+
+
 resource "aws_kms_key" "perf" {
-  count                   = try(var.settings.performance.enabled, false) && try(var.settings.performance.encryption.enabled, false) && try(var.settings.performance.kms_key_alias, "") == "" && try(var.settings.performance.kms_key_id, "") == "" ? 1 : 0
+  count                   = try(var.settings.performance.enabled, false) && try(var.settings.performance.encryption.enabled, false) && try(var.settings.performance.encryption.kms_key_alias, "") == "" && try(var.settings.performance.encryption.kms_key_id, "") == "" && try(var.settings.performance.encryption.kms_key_arn, "") == "" ? 1 : 0
   description             = "KMS Key for RDS Performance Insights Encryption - ${local.cluster_identifier}"
   deletion_window_in_days = try(var.settings.storage.encryption.deletion_window_in_days, 30)
   enable_key_rotation     = true
@@ -87,7 +93,7 @@ resource "aws_kms_key" "perf" {
 }
 
 resource "aws_kms_alias" "perf" {
-  count         = try(var.settings.performance.enabled, false) && try(var.settings.performance.encryption.enabled, false) && try(var.settings.performance.kms_key_alias, "") == "" && try(var.settings.performance.kms_key_id, "") == "" ? 1 : 0
+  count         = try(var.settings.performance.enabled, false) && try(var.settings.performance.encryption.enabled, false) && try(var.settings.performance.encryption.kms_key_alias, "") == "" && try(var.settings.performance.encryption.kms_key_id, "") == "" && try(var.settings.performance.encryption.kms_key_arn, "") == "" ? 1 : 0
   target_key_id = aws_kms_key.perf[0].id
   name          = "alias/aurora/perf/${local.cluster_identifier}"
 }

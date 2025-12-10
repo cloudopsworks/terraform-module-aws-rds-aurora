@@ -77,7 +77,7 @@ resource "aws_rds_cluster" "this" {
   enabled_cloudwatch_logs_exports       = try(var.settings.cloudwatch.log_exports, local.default_exported_logs)
   replication_source_identifier         = try(var.settings.migration.enabled, false) ? data.aws_db_instance.migration_source[0].db_instance_arn : null
   performance_insights_enabled          = try(var.settings.performance.enabled, false)
-  performance_insights_kms_key_id       = try(var.settings.performance.enabled, false) && try(var.settings.performance.encryption.enabled, false) ? try(aws_kms_key.perf[0].arn, data.aws_kms_alias.perf[0].target_key_arn, var.settings.performance.kms_key_id) : null
+  performance_insights_kms_key_id       = try(var.settings.performance.enabled, false) && try(var.settings.performance.encryption.enabled, false) ? try(aws_kms_key.perf[0].arn, data.aws_kms_alias.perf[0].target_key_arn, data.aws_kms_key.perf[0].arn, var.settings.performance.kms_key_arn) : null
   performance_insights_retention_period = try(var.settings.performance.enabled, false) ? try(var.settings.performance.retention_period, 7) : null
   engine_mode = try(var.settings.serverless.enabled, false) ? (
     try(var.settings.serverless.v2, false) ? "provisioned" : "serverless"
