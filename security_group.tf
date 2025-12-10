@@ -24,8 +24,8 @@ locals {
 
 resource "aws_security_group" "this" {
   count       = local.create_sg ? 1 : 0
-  name        = try(var.security_groups.name, "rds-${var.settings.name_prefix}-${local.system_name}-sg")
-  description = "Security group for RDS instance - ${var.settings.name_prefix}-${local.system_name}"
+  name        = try(var.security_groups.name, "${local.cluster_identifier}-sg")
+  description = "Security group for RDS instance - ${local.cluster_identifier}"
   vpc_id      = var.vpc.vpc_id
   egress {
     from_port   = 0
@@ -35,7 +35,7 @@ resource "aws_security_group" "this" {
   }
   tags = merge(
     local.all_tags, tomap({
-      Name = try(var.security_groups.name, "rds-${var.settings.name_prefix}-${local.system_name}-sg")
+      Name = try(var.security_groups.name, "${local.cluster_identifier}-sg")
     })
   )
   lifecycle {

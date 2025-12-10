@@ -19,7 +19,8 @@
 #     create: true | false
 #     id: "arn:aws:rds:us-east-1:123456789012:global-cluster:mydb" # Optional conflicts with create = true
 #   # Cluster general
-#   name_prefix: "mydb"
+#   name: "mydb-name"              # (note) if specified `name_prefix` is not used
+#   name_prefix: "mydb"            # (note) Required if `name` not specified
 #   database_name: "mydb"          # (note) Must Be `null` if `migration.enabled=true`
 #   master_username: "admin"       # (note) Must Be `null` if `migration.enabled=true`
 #   engine_type: "aurora-postgresql" or "aurora-mysql"
