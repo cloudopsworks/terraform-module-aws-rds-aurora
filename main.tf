@@ -10,7 +10,7 @@ locals {
   rds_port              = try(var.settings.port, 5432)
   db_name               = try(var.settings.database_name, "cluster_db")
   master_user           = try(var.settings.master_username, "cluster_root")
-  cluster_identifier    = "rds-${var.settings.name_prefix}-${local.system_name}"
+  cluster_identifier    = try(var.settings.name, "") != "" ? var.settings.name : "rds-${var.settings.name_prefix}-${local.system_name}"
   default_exported_logs = strcontains(var.settings.engine_type, "postgres") ? ["postgresql"] : ["alert", "audit", "error"]
 }
 
@@ -109,7 +109,7 @@ resource "aws_rds_cluster" "this" {
 
 resource "aws_rds_cluster_instance" "this" {
   count                        = try(var.settings.replicas.count, 1)
-  identifier                   = "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
+  identifier                   = "${local.cluster_identifier}-${count.index}"
   cluster_identifier           = aws_rds_cluster.this.cluster_identifier
   instance_class               = var.settings.instance_size
   engine                       = var.settings.engine_type
@@ -124,7 +124,7 @@ resource "aws_rds_cluster_instance" "this" {
   db_parameter_group_name      = try(var.settings.parameter_group.create, false) ? aws_db_parameter_group.this[0].name : null
   tags = merge(local.all_tags, {
     cluster-identifier = local.cluster_identifier
-    instance-name      = "rds-${count.index}-${var.settings.name_prefix}-${local.system_name}"
+    instance-name      = "${local.cluster_identifier}-${count.index}"
   }, local.backup_tags)
 }
 
