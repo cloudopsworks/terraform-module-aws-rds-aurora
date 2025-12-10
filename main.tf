@@ -79,6 +79,7 @@ resource "aws_rds_cluster" "this" {
   performance_insights_enabled          = try(var.settings.performance.enabled, false)
   performance_insights_kms_key_id       = try(var.settings.performance.enabled, false) && try(var.settings.performance.encryption.enabled, false) ? try(aws_kms_key.perf[0].arn, data.aws_kms_alias.perf[0].target_key_arn, data.aws_kms_key.perf[0].arn, var.settings.performance.kms_key_arn) : null
   performance_insights_retention_period = try(var.settings.performance.enabled, false) ? try(var.settings.performance.retention_period, 7) : null
+  database_insights_mode                = try(var.settings.insights_mode, "standard")
   engine_mode = try(var.settings.serverless.enabled, false) ? (
     try(var.settings.serverless.v2, false) ? "provisioned" : "serverless"
   ) : try(var.settings.engine_mode, null)
