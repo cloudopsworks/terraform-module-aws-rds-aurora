@@ -125,6 +125,7 @@ resource "aws_rds_cluster_instance" "this" {
   availability_zone            = try(var.settings.replicas[format("replica_%s", count.index)].availability_zone, null)
   promotion_tier               = try(var.settings.replicas[format("replica_%s", count.index)].promotion_tier, null)
   preferred_maintenance_window = try(var.settings.replicas[format("replica_%s", count.index)].maintenance_window, var.settings.maintenance.window, "sun:03:00-sun:04:00")
+  monitoring_interval          = try(var.settings.monitoring.interval, null)
   db_parameter_group_name      = try(var.settings.parameter_group.create, false) ? aws_db_parameter_group.this[0].name : null
   tags = merge(local.all_tags, {
     cluster-identifier = local.cluster_identifier
