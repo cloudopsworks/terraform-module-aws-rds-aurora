@@ -11,16 +11,20 @@ locals {
   create_sg = try(var.security_groups.create, false)
   security_group_ids = concat(
     aws_security_group.this[*].id,
-    data.aws_security_group.this[*].id,
-    try(var.security_groups.group_ids, [])
+    data.aws_security_group.this[*].id)
   )
   allow_security_groups_names = {
     for sg in try(var.security_groups.allow_security_groups, []) : sg => sg
     if local.create_sg
   }
-  allow_security_groups = {
+  allow_security_groups_pre = {
     for k, v in local.allow_security_groups_names : k => data.aws_security_group.allow_sg[k].id
   }
+  allow_security_groups = merge(allow_security_groups_pre,
+    {
+      for grp in try(var.security_groups.group_ids, []) : grp => grp
+    }
+  )
 }
 
 resource "aws_security_group" "this" {
