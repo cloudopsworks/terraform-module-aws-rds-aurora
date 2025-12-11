@@ -11,7 +11,8 @@ locals {
   create_sg = try(var.security_groups.create, false)
   security_group_ids = concat(
     aws_security_group.this[*].id,
-    data.aws_security_group.this[*].id
+    data.aws_security_group.this[*].id,
+    try(var.security_groups.group_ids, [])
   )
   allow_security_groups_names = {
     for sg in try(var.security_groups.allow_security_groups, []) : sg => sg
