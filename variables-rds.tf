@@ -30,6 +30,7 @@
 #   availability_zones: ["us-east-1a", "us-east-1b"]
 #   rds_port: 5432
 #   apply_immediately: true
+#   insights_mode: "standard" | "advanced"   # (optional) defaults to `standard`
 #   publicly_accessible: true | false # (optional) If true, the cluster will be publicly accessible
 #   storage:
 #     encryption:
