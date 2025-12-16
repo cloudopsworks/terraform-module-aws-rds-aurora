@@ -71,53 +71,9 @@ reference and a complete set of Terragrunt examples to get you up and running qu
 Instead pin to the release tag (e.g. `?ref=vX.Y.Z`) of one of our [latest releases](https://github.com/cloudopsworks/terraform-module-aws-rds-aurora/releases).
 
 
-You can reference this module from Terraform or Terragrunt. Always pin to a release tag (e.g. `?ref=vX.Y.Z`).
-
-Terraform example:
-
-```hcl
-module "aurora" {
-  source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z"
-
-  # Core inputs (full reference below)
-  settings = {
-    name_prefix     = "mydb"
-    engine_type     = "aurora-postgresql"
-    engine_version  = "15.3"
-    instance_size   = "db.r6g.large"
-    availability_zones = ["us-east-1a", "us-east-1b"]
-    backup = {
-      retention_period = 7
-    }
-    maintenance = {
-      window = "sun:03:00-sun:04:00"
-    }
-  }
-
-  vpc = {
-    vpc_id       = "vpc-xxxxxxxxxxxx"
-    subnet_group = "mydb-subnet-group"
-    subnet_ids   = ["subnet-aaaa", "subnet-bbbb"]
-  }
-
-  security_groups = {
-    create = false
-    name   = "sg-mydb"
-  }
-
-  org = {
-    organization_name = "acme"
-    organization_unit = "platform"
-    environment_type  = "prod"
-    environment_name  = "us-east-1"
-  }
-
-  extra_tags = { cost_center = "dba" }
-  run_hoop   = false
-}
-```
-
-Terragrunt example (standalone block):
+This module is designed for Terragrunt-first workflows. Always pin to a release tag (e.g. `?ref=vX.Y.Z`).
+Below is a minimal standalone Terragrunt configuration. See the full Inputs reference and
+additional examples further below.
 
 ```hcl
 terraform {
@@ -158,134 +114,163 @@ inputs = {
 }
 ```
 
-Usage reference (inputs):
+Inputs reference (Terragrunt `inputs`):
 
 - settings (object map)
-  - recovery:
-    - enabled (bool): If true, the cluster will be recovered from a snapshot (same or other cluster).
-    - cluster_identifier (string, optional): Source cluster identifier for recovery.
-    - snapshot_identifier (string, optional): Snapshot identifier for recovery.
-  - global_cluster:
-    - create (bool): If true, create a new global cluster resource.
-    - id (string, optional): Use existing Global Cluster ARN/ID (conflicts with create).
-  - name_prefix (string): Prefix used to generate cluster and instance identifiers.
-  - database_name (string): Initial database name inside the cluster.
-  - master_username (string): Master user name (ignored when managed_password is true).
-  - engine_type (string): "aurora-postgresql" or "aurora-mysql".
-  - engine_version (string): Aurora engine version.
-  - engine_mode (string, optional): "provisioned" | "serverless". If serverless.enabled=true and v2=true, engine_mode is forced to "provisioned" (Serverless v2 behavior).
-  - auto_minor_upgrade (bool): Auto minor version upgrade for instances.
-  - availability_zones (list(string)): Target AZs for the cluster/instances.
-  - rds_port (number): Cluster port. Defaults to 5432 if not provided.
-  - apply_immediately (bool): Apply changes immediately when possible.
-  - publicly_accessible (bool): Whether instances are publicly accessible.
-  - storage.encryption:
-    - enabled (bool): Enable storage encryption.
-    - kms_key_id (string, optional): KMS Key or Alias for encryption (created/used depending on kms.tf logic).
-  - maintenance:
-    - window (string): Preferred maintenance window.
-  - backup:
-    - retention_period (number): Backup retention in days.
-    - window (string): Preferred backup window.
-    - copy_tags (bool): Copy tags to snapshots.
-  - deletion_protection (bool): Enable deletion protection.
-  - allow_upgrade (bool): Allow major version upgrades.
-  - replicas:
-    - count (number): Number of instances to create.
-    - replica_N: Per-replica overrides (availability_zone, promotion_tier, maintenance_window).
-  - instance_size (string): Instance class (e.g., "db.r6g.large" or "db.serverless").
-  - serverless:
-    - enabled (bool): Enable Serverless.
-    - v2 (bool): Use Serverless v2 when true.
-    - scaling_configuration: For v1 and v2
-      - min_capacity (number)
-      - max_capacity (number)
-      - seconds_until_auto_pause (number)
-      - auto_pause (bool, v1 only)
-      - timeout_action (string, v1 only)
-  - managed_password (bool): If true, AWS manages master password in Secrets Manager.
-  - managed_password_rotation (bool): If true, enable rotation for managed password.
-  - password_secret_kms_key_id (string): KMS key/alias for the password secret.
-  - rotation_lambda_name (string): Rotation Lambda name (required if managed_password_rotation=false and you rotate externally).
-  - password_rotation_period (number): Rotation period in days (default 90).
-  - rotation_duration (string): Rotation Lambda timeout (e.g., "1h").
-  - hoop:
-    - enabled (bool)
-    - agent (string)
-    - tags (list(string))
-  - events:
-    - enabled: true | false
-    - sns_topic_arn: "arn:aws:sns:us-east-1:123456789012:my-sns-topic"
-    - sns_topic_name: "my-sns-topic" # Required if sns_topic_arn is not provided
-    - categories: ["availability", "deletion", "failover", "failure", "low storage", "maintenance", "notification", "read replica", "recovery", "restore", "security", "storage"]
-    - instances: true | false # If true, the event subscription will be created for instances.
-
 - vpc (object map)
-  - vpc_id (string)
-  - subnet_group (string)
-  - subnet_ids (list(string))
-
 - security_groups (object map)
-  - create (bool)
-  - name (string): Name/ID to use when create=false
-  - allow_cidrs (list(string))
-  - allow_security_groups (list(string))
+- run_hoop (bool)
+- is_hub (bool), spoke_def (string), org (object), extra_tags (map(string))
 
-- run_hoop (bool): Run HOOP agent (advanced; triggers a null_resource that executes a HOOP command).
+Full variables documentation (YAML with inline comments):
 
-- Module-level tags/flags
-  - is_hub (bool): Whether this is a HUB configuration (default false).
-  - spoke_def (string): Spoke definition suffix (default "001").
-  - org (object):
-    - organization_name (string)
-    - organization_unit (string)
-    - environment_type (string)
-    - environment_name (string)
-  - extra_tags (map(string)): Extra tags to merge on resources.
+```yaml
+# settings:                                      # (Required) Root map for Aurora configuration
+#   recovery:                                    # (Optional) Restore cluster from snapshot or another cluster; conflicts with creating a fresh cluster
+#     enabled: true | false                      # (Optional) Enable recovery mode; default: false
+#     cluster_identifier: "rds-cluster-name"     # (Optional) Source cluster identifier when recovering from another cluster
+#     snapshot_identifier: "cluster-snap-name"   # (Optional) Specific cluster snapshot identifier to restore from
+#   global_cluster:                              # (Optional) Manage Aurora Global Database
+#     create: true | false                       # (Optional) Create a new Global Cluster; default: false
+#     id: "arn:aws:rds:...:global-cluster:mydb" # (Optional) Existing Global Cluster ARN/ID to join; conflicts with create=true
+#   name: "mydb-name"                            # (Optional) Explicit cluster identifier; if set, overrides name_prefix
+#   name_prefix: "mydb"                          # (Required) When `name` not provided; used to build cluster/instances names
+#   database_name: "mydb"                        # (Optional) Initial DB name; default: "cluster_db"; must be null when migration.enabled=true
+#   master_username: "admin"                     # (Optional) Master user name; default: "cluster_root"; must be null when migration.enabled=true
+#   engine_type: "aurora-postgresql"            # (Required) One of: "aurora-postgresql", "aurora-mysql"
+#   engine_version: "15.3"                       # (Required) Aurora engine version (e.g., Postgres 15.x, MySQL 8.0.x supported by AWS)
+#   engine_mode: "provisioned" | "serverless"    # (Optional) Engine mode; for Serverless v2 this is kept as "provisioned" by AWS
+#   auto_minor_upgrade: true | false              # (Optional) Auto minor version upgrade for instances; default: false
+#   availability_zones: ["us-east-1a", "us-east-1b"] # (Required) List of AZs for cluster/instances
+#   rds_port: 5432                                # (Optional) Cluster port; default: 5432 (5432 for PG, 3306 for MySQL typical)
+#   apply_immediately: true | false               # (Optional) Apply changes immediately; default: true
+#   insights_mode: "standard" | "advanced"        # (Optional) Database Insights mode; default: "standard"
+#   publicly_accessible: true | false             # (Optional) Make instances public; default: false
+#   storage:
+#     encryption:
+#       enabled: true | false                     # (Optional) Enable at-rest encryption; default: false
+#       kms_key_id: "1234abcd-..."               # (Optional) Use existing KMS key id
+#       kms_key_arn: "arn:aws:kms:...:key/..."   # (Optional) Use existing KMS key ARN
+#       kms_key_alias: "alias/aws/rds"           # (Optional) Use existing KMS key alias (with or without "alias/" prefix)
+#       deletion_window_in_days: 30               # (Optional) If module creates KMS key; default: 30
+#       rotation_period_in_days: 90               # (Optional) If module creates KMS key; default: 90
+#     type: "" | "aurora-iopt1" | "io1" | "io2" # (Optional) Storage type; defaults to provider/account default; iops required for io1/io2
+#     iops: 1000                                  # (Optional) Required when type is io1/io2
+#   monitoring:
+#     interval: 0                                 # (Optional) Enhanced monitoring interval seconds; one of: 0,1,5,10,15,30,60; default: 0 (disabled)
+#   performance:
+#     enabled: true | false                       # (Optional) Enable Performance Insights; default: false
+#     retention_period: 7                         # (Optional) Retention in days; default: 7
+#     encryption:
+#       enabled: true | false                     # (Optional) Enable encryption for PI; default: false
+#       kms_key_alias: "alias/pi-key"            # (Optional) Existing KMS alias
+#       kms_key_id: "abcd-1234"                  # (Optional) Existing KMS key id
+#       kms_key_arn: "arn:aws:kms:..."           # (Optional) Existing KMS key arn
+#   maintenance:
+#     window: "sun:03:00-sun:04:00"               # (Optional) Preferred maintenance window; default: sun:03:00-sun:04:00
+#   backup:
+#     retention_period: 7                         # (Optional) Snapshot retention days; default: 5
+#     window: "01:00-02:30"                       # (Optional) Preferred backup window; default: 00:45-02:45
+#     copy_tags: true | false                     # (Optional) Copy tags to snapshots; default: true
+#   deletion_protection: true | false             # (Optional) Protect cluster from deletion; default: true
+#   allow_upgrade: true | false                   # (Optional) Allow major version upgrade; default: true
+#   replicas:
+#     count: 2                                    # (Optional) Number of instances; default: 1 (writer only)
+#     replica_0:
+#       availability_zone: "us-east-1a"           # (Optional) AZ override for this replica
+#       promotion_tier: 10                         # (Optional) Lower number = higher failover priority (1-15)
+#       maintenance_window: "wed:03:00-wed:04:00" # (Optional) Per-instance maintenance window
+#     replica_1:
+#       availability_zone: "us-east-1b"           # (Optional)
+#       instance_size: "db.r5.xlarge"             # (Optional) Instance class override for this replica
+#   instance_size: "db.r6g.large" | "db.serverless" # (Required) Instance class; use "db.serverless" for Serverless v1/v2
+#   serverless:
+#     enabled: true | false                        # (Optional) Enable Serverless mode; default: false
+#     v2: true | false                             # (Optional) Use Serverless v2; default: false
+#     scaling_configuration:
+#       min_capacity: 0.5                          # (Optional) Minimum ACU (v2) or capacity (v1)
+#       max_capacity: 16.0                         # (Optional) Maximum ACU (v2) or capacity (v1)
+#       seconds_until_auto_pause: 300              # (Optional) Auto pause after seconds (v1 and v2)
+#       auto_pause: true | false                   # (Optional) v1 only
+#       timeout_action: ForceApplyCapacityChange   # (Optional) v1 only; ForceApplyCapacityChange | RollbackCapacityChange
+#   managed_password: true | false                 # (Optional) Store/manage master password in Secrets Manager; default: false; do not set if migration.enabled=true
+#   managed_password_rotation: true | false        # (Optional) Enable rotation for managed password; default: false
+#   password_secret_kms_key_id: "arn:aws:kms:..." # (Optional) KMS key/alias for the password secret when rotation enabled
+#   rotation_lambda_name: "rds-rotation-lambda"   # (Optional) External rotation Lambda name if not managed by AWS
+#   password_rotation_period: 90                   # (Optional) Rotation period in days; default: 90
+#   rotation_duration: "1h"                        # (Optional) Rotation Lambda duration; default: 1h
+#   iam:
+#     database_authentication_enabled: true | false # (Optional) Enable IAM DB auth; default: true
+#     authentication_roles:                        # (Optional) Attach IAM roles to cluster for auth
+#       - "arn:aws:iam::123456789012:role/role-name"
+#   cloudwatch:
+#     retention_days: 90                           # (Optional) Log retention days; default: 90
+#     retain: true | false                         # (Optional) Prevent log group destroy on delete; default: true
+#     log_exports:
+#       - error
+#       - audit
+#       - general
+#       - iam-db-auth-error
+#       - instance
+#       - postgresql                               # (PostgreSQL)
+#       - slowquery
+#   parameter_group:
+#     create: true | false                         # (Optional) Create dedicated DB parameter group; default: false
+#     family: "aurora-postgresql15"               # (Optional) If not set, computed as engine_type+engine_version
+#     skip_destroy: true | false                   # (Optional) Keep parameter group on destroy; default: false
+#     parameters:
+#       - name: "PARAM NAME"
+#         value: "PARAM VALUE"
+#         apply_method: "immediate" | "pending-reboot"
+#   migration:
+#     enabled: true | false
+#     in_progress: true | false
+#     source_rds_instance: "rds-instance-id"
+#   hoop:
+#     enabled: true | false
+#     agent: "hoop-agent-name"
+#     tags: ["tag1", "tag2"]
+#   events:
+#     enabled: true | false
+#     sns_topic_arn: "arn:aws:sns:...:my-topic"
+#     sns_topic_name: "my-sns-topic"
+#     categories: ["availability", "deletion", "failover", "failure", "low storage", "maintenance", "notification", "read replica", "recovery", "restore", "security", "storage"]
+#     instances: true | false
+
+# vpc:
+#   vpc_id: "vpc-12345678901234"
+#   subnet_group: "db-subnet-group-name"
+#   subnet_ids:
+#     - "subnet-abcdef123456789"
+#     - "subnet-abcdef123456781"
+#     - "subnet-abcdef123456782"
+
+# security_groups:
+#   create: true | false
+#   name: "sg-rds"
+#   group_ids:
+#     - "sg-0123456789abcdef0"
+#   allow_cidrs:
+#     - "1.2.3.4/32"
+#     - "10.0.0.0/16"
+#   allow_security_groups:
+#     - "sg-name-123456"
+#     - "sg-name-abcdef"
+```
 
 ## Quick Start
 
-Terragrunt
-1) Ensure your AWS credentials and provider configuration are set (e.g., via environment variables or a root provider block in your boilerplate).
-2) Create a new folder for your Aurora environment and a `terragrunt.hcl` using one of the examples above.
-3) Initialize and apply:
+1. Create a new Terragrunt folder (e.g., `live/ue1/prod/aurora`).
+2. Add a `terragrunt.hcl` with the minimal inputs shown above.
+3. Run `terragrunt init` and `terragrunt apply`.
+4. Optionally enable encryption, events, and performance insights as needed.
 
-   ```bash
-   terragrunt init
-   terragrunt plan
-   terragrunt apply
-   ```
-
-Terraform (without Terragrunt)
-1) Create a Terraform root module and reference this module using `source = git::...ref=vX.Y.Z`.
-2) Provide required inputs (at minimum `settings.name_prefix`, `settings.engine_type`, `settings.engine_version`, `settings.instance_size`, `vpc.subnet_group`, and `security_groups` configuration).
-3) Initialize and apply:
-
-   ```bash
-   terraform init
-   terraform plan
-   terraform apply
-   ```
-
-Notes
-- Pin to released tags instead of a moving branch.
-- Networking (VPC/Subnets) and Security Groups are expected to exist unless you opt-in to have them created in your environment wrapper.
-- The module tags resources using your `org` object and `extra_tags` merge strategy.
-
-
-## Examples
-
-The following Terragrunt examples are based on common Gruntwork-style boilerplates (often generated
-with `terragrunt scaffold` and stored under a `.boilerplate` directory). Adjust include/remote state
-according to your environment.
-
-1) Minimal provisioned Aurora PostgreSQL cluster
+Minimal inputs (copy/paste):
 
 ```hcl
 terraform {
   source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z"
 }
-
 inputs = {
   settings = {
     name_prefix        = "mydb"
@@ -293,15 +278,10 @@ inputs = {
     engine_version     = "15.3"
     instance_size      = "db.r6g.large"
     availability_zones = ["us-east-1a", "us-east-1b"]
-    backup = { retention_period = 7 }
   }
-  vpc = {
-    vpc_id       = "vpc-xxxxxxxxxxxx"
-    subnet_group = "mydb-subnet-group"
-    subnet_ids   = ["subnet-aaaa", "subnet-bbbb"]
-  }
+  vpc = { vpc_id = "vpc-xxxxxxxxxxxx", subnet_group = "mydb-subnet-group" }
   security_groups = { create = false, name = "sg-mydb" }
-  org = { organization_name = "acme", organization_unit = "platform", environment_type = "prod", environment_name = "us-east-1" }
+  org = { organization_name = "acme", organization_unit = "platform", environment_type = "prod", environment_name = "ue1" }
 }
 ```
 
@@ -432,6 +412,133 @@ inputs = {
 ```
 
 
+## Examples
+
+The following Terragrunt examples are based on common Gruntwork-style boilerplates (often generated
+with `terragrunt scaffold` and stored under a `.boilerplate` directory). Adjust include/remote state
+according to your environment.
+
+1) Minimal provisioned Aurora PostgreSQL cluster
+
+```hcl
+terraform {
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z"
+}
+
+inputs = {
+  settings = {
+    name_prefix        = "mydb"
+    engine_type        = "aurora-postgresql"
+    engine_version     = "15.3"
+    instance_size      = "db.r6g.large"
+    availability_zones = ["us-east-1a", "us-east-1b"]
+    backup = { retention_period = 7 }
+  }
+  vpc = {
+    vpc_id       = "vpc-xxxxxxxxxxxx"
+    subnet_group = "mydb-subnet-group"
+    subnet_ids   = ["subnet-aaaa", "subnet-bbbb"]
+  }
+  security_groups = { create = false, name = "sg-mydb" }
+  org = { organization_name = "acme", organization_unit = "platform", environment_type = "prod", environment_name = "us-east-1" }
+}
+```
+
+2) Serverless v2 Aurora MySQL cluster with scaling limits
+
+```hcl
+terraform {
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z"
+}
+
+inputs = {
+  settings = {
+    name_prefix        = "srvless"
+    engine_type        = "aurora-mysql"
+    engine_version     = "8.0.mysql_aurora.3.06.0"
+    instance_size      = "db.serverless"
+    availability_zones = ["us-east-1a", "us-east-1b"]
+    serverless = {
+      enabled = true
+      v2      = true
+      scaling_configuration = {
+        min_capacity = 0.5
+        max_capacity = 8
+      }
+    }
+    backup = { retention_period = 7 }
+  }
+  vpc = {
+    vpc_id       = "vpc-xxxxxxxxxxxx"
+    subnet_group = "srvless-subnets"
+  }
+  security_groups = { create = false, name = "sg-db-internal" }
+  org = { organization_name = "acme", organization_unit = "platform", environment_type = "dev", environment_name = "ue1" }
+}
+```
+
+3) Recover cluster from snapshot and enable Events to SNS topic
+
+```hcl
+terraform {
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z"
+}
+
+inputs = {
+  settings = {
+    name_prefix        = "restore"
+    engine_type        = "aurora-postgresql"
+    engine_version     = "15.3"
+    instance_size      = "db.r6g.large"
+    availability_zones = ["us-east-1a", "us-east-1b"]
+    recovery = {
+      enabled             = true
+      snapshot_identifier = "mydb-cluster-snap-2024-12-01"
+    }
+    events = {
+      enabled        = true
+      sns_topic_name = "aurora-events"
+      categories     = ["failover", "maintenance", "failure"]
+      instances      = true
+    }
+  }
+  vpc = { vpc_id = "vpc-xxxxxxxxxxxx", subnet_group = "restore-subnets" }
+  security_groups = { create = false, name = "sg-db-internal" }
+  org = { organization_name = "acme", organization_unit = "platform", environment_type = "staging", environment_name = "ue1" }
+}
+```
+
+4) Managed master password with rotation and Hoop outputs
+
+```hcl
+terraform {
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z"
+}
+
+inputs = {
+  settings = {
+    name_prefix        = "secure"
+    engine_type        = "aurora-postgresql"
+    engine_version     = "15.3"
+    instance_size      = "db.r6g.large"
+    availability_zones = ["us-east-1a", "us-east-1b"]
+    managed_password            = true
+    managed_password_rotation   = true
+    password_secret_kms_key_id  = "alias/aurora/secrets"
+    hoop = {
+      enabled = true
+      agent   = "corp-agent"
+      tags    = ["prod", "aurora"]
+    }
+  }
+  vpc = { vpc_id = "vpc-xxxxxxxxxxxx", subnet_group = "secure-subnets" }
+  security_groups = { create = false, name = "sg-db-internal" }
+  org = { organization_name = "acme", organization_unit = "platform", environment_type = "prod", environment_name = "ue1" }
+  run_hoop = false # set true to run local-exec that creates Hoop connection automatically
+}
+```
+
+
 
 ## Makefile Targets
 ```
@@ -474,12 +581,15 @@ Available targets:
 
 | Name | Type |
 |------|------|
+| [aws_cloudwatch_log_group.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
 | [aws_db_event_subscription.events_cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_event_subscription) | resource |
 | [aws_db_event_subscription.events_instances](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_event_subscription) | resource |
 | [aws_db_parameter_group.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_parameter_group) | resource |
 | [aws_iam_role.rds_monitoring](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy_attachment.rds_monitoring](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_kms_alias.perf](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_alias) | resource |
 | [aws_kms_alias.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_alias) | resource |
+| [aws_kms_key.perf](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
 | [aws_kms_key.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
 | [aws_rds_cluster.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster) | resource |
 | [aws_rds_cluster_endpoint.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster_endpoint) | resource |
@@ -504,7 +614,9 @@ Available targets:
 | [aws_db_instance.migration_source](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/db_instance) | data source |
 | [aws_iam_policy_document.rds_kms_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.rds_monitoring](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_kms_alias.perf](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_alias) | data source |
 | [aws_kms_alias.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_alias) | data source |
+| [aws_kms_key.perf](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_key) | data source |
 | [aws_kms_key.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_key) | data source |
 | [aws_lambda_function.rotation_function](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/lambda_function) | data source |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
