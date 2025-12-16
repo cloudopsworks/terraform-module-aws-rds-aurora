@@ -11,7 +11,10 @@ locals {
   db_name               = try(var.settings.database_name, "cluster_db")
   master_user           = try(var.settings.master_username, "cluster_root")
   cluster_identifier    = try(var.settings.name, "") != "" ? var.settings.name : "rds-${var.settings.name_prefix}-${local.system_name}"
-  default_exported_logs = strcontains(var.settings.engine_type, "postgres") ? ["postgresql"] : ["alert", "audit", "error"]
+  default_exported_logs = strcontains(var.settings.engine_type, "postgres") ? ["postgresql"] : ["audit", "error"]
+  cw_logs = [
+    for log in try(var.settings.cloudwatch.log_exports, local.default_exported_logs) : "/aws/rds/cluster/${local.cluster_identifier}/${log}"
+  ]
 }
 
 # Provision RDS global cluster only if settings.global_cluster.create=true
@@ -44,6 +47,7 @@ data "aws_db_instance" "migration_source" {
 
 # Provisions RDS instance only if rds_provision=true
 resource "aws_rds_cluster" "this" {
+  depends_on                            = [aws_cloudwatch_log_group.this]
   cluster_identifier                    = local.cluster_identifier
   engine                                = var.settings.engine_type
   engine_version                        = var.settings.engine_version

@@ -90,6 +90,8 @@
 #     authentication_roles: # List of IAM roles to attach to the cluster, optional
 #       - "arn:aws:iam::123456789012:role/role-name"
 #   cloudwatch:
+#     retention_days: 90     # (optional) defaults to 90 day
+#     retain: true | false   # (optional) if true, the log group will not be destroyed
 #     log_exports:
 #       - error
 #       - audit
