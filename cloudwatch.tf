@@ -12,6 +12,6 @@ resource "aws_cloudwatch_log_group" "this" {
   name              = each.value
   retention_in_days = try(var.settings.cloudwatch.retention_days, 90)
   skip_destroy      = try(var.settings.cloudwatch.retain, true)
-  kms_key_id        = try(var.settings.storage.encryption.enabled, false) ? try(aws_kms_key.this[0].arn, data.aws_kms_alias.rds[0].target_key_arn, data.aws_kms_key.rds[0].arn, var.settings.storage.encryption.kms_key_arn) : null
+  kms_key_id        = try(var.settings.storage.encryption.enabled, false) ? try(aws_kms_key.this[0].arn, var.settings.storage.encryption.kms_key_arn, null) : null
   tags              = local.all_tags
 }
