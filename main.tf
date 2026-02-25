@@ -56,7 +56,7 @@ resource "aws_rds_cluster" "this" {
   database_name                         = !try(var.settings.migration.enabled, false) ? local.db_name : null
   master_username                       = !try(var.settings.migration.enabled, false) ? local.master_user : null
   master_password                       = try(var.settings.managed_password, false) ? null : (!try(var.settings.migration.enabled, false) ? random_password.randompass[0].result : null)
-  manage_master_user_password           = try(var.settings.managed_password, false) ? (try(var.settings.migration.enabled, false) ? null : true) : null
+  manage_master_user_password           = try(var.settings.managed_password, false) ? (try(var.settings.migration.enabled, false) ? false : true) : null
   master_user_secret_kms_key_id         = try(var.settings.managed_password_rotation, false) ? (!try(var.settings.migration.enabled, false) ? try(var.settings.password_secret_kms_key_id, null) : null) : null
   backup_retention_period               = !try(var.settings.migration.enabled, false) ? try(var.settings.backup.retention_period, 5) : null
   preferred_backup_window               = try(var.settings.backup.window, "00:45-02:45")
