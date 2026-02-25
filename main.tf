@@ -53,12 +53,12 @@ resource "aws_rds_cluster" "this" {
   engine_version                        = var.settings.engine_version
   global_cluster_identifier             = try(var.settings.global_cluster.create, false) ? aws_rds_global_cluster.this[0].id : try(var.settings.global_cluster.id, null)
   availability_zones                    = var.settings.availability_zones
-  database_name                         = local.db_name
-  master_username                       = local.master_user
+  database_name                         = !try(var.settings.migration.enabled, false) ? local.db_name : null
+  master_username                       = !try(var.settings.migration.enabled, false) ? local.master_user : null
   master_password                       = try(var.settings.managed_password, false) ? null : (!try(var.settings.migration.enabled, false) ? random_password.randompass[0].result : null)
-  manage_master_user_password           = try(var.settings.managed_password, false) ? true : null
-  master_user_secret_kms_key_id         = try(var.settings.managed_password_rotation, false) ? try(var.settings.password_secret_kms_key_id, null) : null
-  backup_retention_period               = try(var.settings.backup.retention_period, 5)
+  manage_master_user_password           = try(var.settings.managed_password, false) ? (!try(var.settings.migration.enabled, false) ? true : null) : null
+  master_user_secret_kms_key_id         = try(var.settings.managed_password_rotation, false) ? (!try(var.settings.migration.enabled, false) ? try(var.settings.password_secret_kms_key_id, null) : null) : null
+  backup_retention_period               = !try(var.settings.migration.enabled, false) ? try(var.settings.backup.retention_period, 5) : null
   preferred_backup_window               = try(var.settings.backup.window, "00:45-02:45")
   preferred_maintenance_window          = try(var.settings.maintenance.window, "sun:03:00-sun:04:00")
   copy_tags_to_snapshot                 = try(var.settings.backup.copy_tags, true)
