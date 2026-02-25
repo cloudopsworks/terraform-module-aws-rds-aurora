@@ -72,7 +72,7 @@ resource "aws_rds_cluster" "this" {
   snapshot_identifier                   = try(var.settings.recovery.enabled, false) ? try(data.aws_db_cluster_snapshot.recovery[0].id) : null
   deletion_protection                   = try(var.settings.deletion_protection, true)
   allow_major_version_upgrade           = try(var.settings.allow_upgrade, true)
-  iam_database_authentication_enabled   = try(var.settings.iam.database_authentication_enabled, true)
+  iam_database_authentication_enabled   = !try(var.settings.migration.enabled, false) ? try(var.settings.iam.database_authentication_enabled, true) : null
   iam_roles                             = try(var.settings.iam.authentication_roles, null)
   iops                                  = try(var.settings.storage.iops, null)
   storage_type                          = try(var.settings.storage.type, null)
