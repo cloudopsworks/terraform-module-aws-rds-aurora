@@ -116,21 +116,26 @@ resource "aws_rds_cluster" "this" {
 }
 
 resource "aws_rds_cluster_instance" "this" {
-  count                        = try(var.settings.replicas.count, 1)
-  identifier                   = "${local.cluster_identifier}-${count.index}"
-  cluster_identifier           = aws_rds_cluster.this.cluster_identifier
-  instance_class               = try(var.settings.replicas[format("replica_%s", count.index)].instance_size, var.settings.instance_size)
-  engine                       = var.settings.engine_type
-  engine_version               = var.settings.engine_version
-  auto_minor_version_upgrade   = try(var.settings.auto_minor_upgrade, false)
-  apply_immediately            = try(var.settings.apply_immediately, true)
-  publicly_accessible          = try(var.settings.publicly_accessible, false)
-  copy_tags_to_snapshot        = try(var.settings.backup.copy_tags, true)
-  availability_zone            = try(var.settings.replicas[format("replica_%s", count.index)].availability_zone, null)
-  promotion_tier               = try(var.settings.replicas[format("replica_%s", count.index)].promotion_tier, null)
-  preferred_maintenance_window = try(var.settings.replicas[format("replica_%s", count.index)].maintenance_window, var.settings.maintenance.window, "sun:03:00-sun:04:00")
-  monitoring_interval          = try(var.settings.monitoring.interval, null)
-  db_parameter_group_name      = try(var.settings.parameter_group.create, false) ? aws_db_parameter_group.this[0].name : null
+  count                                 = try(var.settings.replicas.count, 1)
+  identifier                            = "${local.cluster_identifier}-${count.index}"
+  cluster_identifier                    = aws_rds_cluster.this.cluster_identifier
+  instance_class                        = try(var.settings.replicas[format("replica_%s", count.index)].instance_size, var.settings.instance_size)
+  engine                                = var.settings.engine_type
+  engine_version                        = var.settings.engine_version
+  auto_minor_version_upgrade            = try(var.settings.auto_minor_upgrade, false)
+  apply_immediately                     = try(var.settings.apply_immediately, true)
+  publicly_accessible                   = try(var.settings.publicly_accessible, false)
+  copy_tags_to_snapshot                 = try(var.settings.backup.copy_tags, true)
+  availability_zone                     = try(var.settings.replicas[format("replica_%s", count.index)].availability_zone, null)
+  promotion_tier                        = try(var.settings.replicas[format("replica_%s", count.index)].promotion_tier, null)
+  preferred_maintenance_window          = try(var.settings.replicas[format("replica_%s", count.index)].maintenance_window, var.settings.maintenance.window, "sun:03:00-sun:04:00")
+  monitoring_interval                   = try(var.settings.monitoring.interval, null)
+  monitoring_role_arn                   = try(var.settings.monitoring.interval, 0) > 0 ? aws_iam_role.rds_monitoring[0].arn : null
+  db_parameter_group_name               = try(var.settings.parameter_group.create, false) ? aws_db_parameter_group.this[0].name : null
+  performance_insights_enabled          = try(var.settings.performance.enabled, false)
+  performance_insights_kms_key_id       = try(var.settings.performance.enabled, false) && try(var.settings.performance.encryption.enabled, false) ? try(aws_kms_key.perf[0].arn, data.aws_kms_alias.perf[0].target_key_arn, data.aws_kms_key.perf[0].arn, var.settings.performance.kms_key_arn) : null
+  performance_insights_retention_period = try(var.settings.performance.enabled, false) ? try(var.settings.performance.retention_period, 7) : null
+
   tags = merge(local.all_tags, {
     cluster-identifier = local.cluster_identifier
     instance-name      = "${local.cluster_identifier}-${count.index}"
