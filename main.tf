@@ -135,7 +135,6 @@ resource "aws_rds_cluster_instance" "this" {
   performance_insights_enabled          = try(var.settings.performance.enabled, false)
   performance_insights_kms_key_id       = try(var.settings.performance.enabled, false) && try(var.settings.performance.encryption.enabled, false) ? try(aws_kms_key.perf[0].arn, data.aws_kms_alias.perf[0].target_key_arn, data.aws_kms_key.perf[0].arn, var.settings.performance.kms_key_arn) : null
   performance_insights_retention_period = try(var.settings.performance.enabled, false) ? try(var.settings.performance.retention_period, 7) : null
-
   tags = merge(local.all_tags, {
     cluster-identifier = local.cluster_identifier
     instance-name      = "${local.cluster_identifier}-${count.index}"
