@@ -7,8 +7,9 @@
 #     Distributed Under Apache v2.0 License
 #
 
-resource "hoop_connection" "postgres_managed" {
+module "postgres_managed" {
   count    = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && !try(var.settings.migration.in_progress, false) && try(var.settings.hoop.agent_id, "") != "" ? 1 : 0
+  source   = "./hoop"
   name     = local.cluster_owner_name
   agent_id = var.settings.hoop.agent_id
   type     = "database"
@@ -21,21 +22,19 @@ resource "hoop_connection" "postgres_managed" {
     "envvar:DB"      = aws_rds_cluster.this.database_name
     "envvar:SSLMODE" = "prefer"
   }
-  access_mode_connect  = "enabled"
-  access_mode_exec     = "enabled"
-  access_mode_runbooks = "enabled"
-  access_schema        = "enabled"
-  tags                 = try(var.settings.hoop.tags, {})
-  lifecycle {
-    ignore_changes = [
-      command,
-    ]
+  access_modes = {
+    connect  = "enabled"
+    exec     = "enabled"
+    runbooks = "enabled"
+    schema   = "enabled"
   }
-
+  tags           = try(var.settings.hoop.tags, {})
+  access_control = try(var.settings.hoop.access_control, [])
 }
 
-resource "hoop_connection" "postgres" {
+module "postgres" {
   count    = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && !try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && try(var.settings.hoop.agent_id, "") != "" ? 1 : 0
+  source   = "./hoop"
   name     = local.cluster_owner_name
   agent_id = var.settings.hoop.agent_id
   type     = "database"
@@ -48,21 +47,19 @@ resource "hoop_connection" "postgres" {
     "envvar:DB"      = "_aws:${aws_secretsmanager_secret.rds[0].name}:dbname"
     "envvar:SSLMODE" = "prefer"
   }
-  access_mode_connect  = "enabled"
-  access_mode_exec     = "enabled"
-  access_mode_runbooks = "enabled"
-  access_schema        = "enabled"
-  tags                 = try(var.settings.hoop.tags, {})
-  lifecycle {
-    ignore_changes = [
-      command,
-    ]
+  access_modes = {
+    connect  = "enabled"
+    exec     = "enabled"
+    runbooks = "enabled"
+    schema   = "enabled"
   }
-
+  tags           = try(var.settings.hoop.tags, {})
+  access_control = try(var.settings.hoop.access_control, [])
 }
 
-resource "hoop_connection" "mysql_managed" {
+module "mysql_managed" {
   count    = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && !try(var.settings.migration.in_progress, false) && try(var.settings.hoop.agent_id, "") != "" ? 1 : 0
+  source   = "./hoop"
   name     = local.cluster_owner_name
   agent_id = var.settings.hoop.agent_id
   type     = "database"
@@ -74,21 +71,19 @@ resource "hoop_connection" "mysql_managed" {
     "envvar:PASS" = "_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:password"
     "envvar:DB"   = "_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:dbname"
   }
-  access_mode_connect  = "enabled"
-  access_mode_exec     = "enabled"
-  access_mode_runbooks = "enabled"
-  access_schema        = "enabled"
-  tags                 = try(var.settings.hoop.tags, {})
-  lifecycle {
-    ignore_changes = [
-      command,
-    ]
+  access_modes = {
+    connect  = "enabled"
+    exec     = "enabled"
+    runbooks = "enabled"
+    schema   = "enabled"
   }
-
+  tags           = try(var.settings.hoop.tags, {})
+  access_control = try(var.settings.hoop.access_control, [])
 }
 
-resource "hoop_connection" "mysql" {
+module "mysql" {
   count    = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && !try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && try(var.settings.hoop.agent_id, "") != "" ? 1 : 0
+  source   = "./hoop"
   name     = local.cluster_owner_name
   agent_id = var.settings.hoop.agent_id
   type     = "database"
@@ -101,22 +96,12 @@ resource "hoop_connection" "mysql" {
     "envvar:DB"      = "_aws:${aws_secretsmanager_secret.rds[0].name}:dbname"
     "envvar:SSLMODE" = "prefer"
   }
-  access_mode_connect  = "enabled"
-  access_mode_exec     = "enabled"
-  access_mode_runbooks = "enabled"
-  access_schema        = "enabled"
-  tags                 = try(var.settings.hoop.tags, {})
-  lifecycle {
-    ignore_changes = [
-      command,
-    ]
+  access_modes = {
+    connect  = "enabled"
+    exec     = "enabled"
+    runbooks = "enabled"
+    schema   = "enabled"
   }
-
-}
-
-resource "hoop_plugin_connection" "access_control" {
-  count         = length(try(var.settings.hoop.access_control, [])) > 0 && try(var.settings.hoop.agent_id, "") != "" ? 1 : 0
-  connection_id = try(hoop_connection.postgres_managed[0].id, hoop_connection.postgres[0].id, hoop_connection.mysql_managed[0].id, hoop_connection.mysql[0].id)
-  plugin_name   = "access_control"
-  config        = var.settings.hoop.access_control
+  tags           = try(var.settings.hoop.tags, {})
+  access_control = try(var.settings.hoop.access_control, [])
 }
