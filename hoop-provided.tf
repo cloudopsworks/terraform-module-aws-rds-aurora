@@ -26,6 +26,12 @@ resource "hoop_connection" "postgres_managed" {
   access_mode_runbooks = "enabled"
   access_schema        = "enabled"
   tags                 = try(var.settings.hoop.tags, {})
+  lifecycle {
+    ignore_changes = [
+      command,
+    ]
+  }
+
 }
 
 resource "hoop_connection" "postgres" {
@@ -47,6 +53,12 @@ resource "hoop_connection" "postgres" {
   access_mode_runbooks = "enabled"
   access_schema        = "enabled"
   tags                 = try(var.settings.hoop.tags, {})
+  lifecycle {
+    ignore_changes = [
+      command,
+    ]
+  }
+
 }
 
 resource "hoop_connection" "mysql_managed" {
@@ -67,6 +79,12 @@ resource "hoop_connection" "mysql_managed" {
   access_mode_runbooks = "enabled"
   access_schema        = "enabled"
   tags                 = try(var.settings.hoop.tags, {})
+  lifecycle {
+    ignore_changes = [
+      command,
+    ]
+  }
+
 }
 
 resource "hoop_connection" "mysql" {
@@ -88,6 +106,12 @@ resource "hoop_connection" "mysql" {
   access_mode_runbooks = "enabled"
   access_schema        = "enabled"
   tags                 = try(var.settings.hoop.tags, {})
+  lifecycle {
+    ignore_changes = [
+      command,
+    ]
+  }
+
 }
 
 resource "hoop_plugin_connection" "access_control" {
