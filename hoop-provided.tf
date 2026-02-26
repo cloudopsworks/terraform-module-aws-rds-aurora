@@ -89,3 +89,10 @@ resource "hoop_connection" "mysql" {
   access_schema        = "enabled"
   tags                 = try(var.settings.hoop.tags, {})
 }
+
+resource "hoop_plugin_connection" "access_control" {
+  count         = length(try(var.settings.hoop.access_control, [])) > 0 && try(var.settings.hoop.agent_id, "") != "" ? 1 : 0
+  connection_id = try(hoop_connection.postgres_managed[0].id, hoop_connection.postgres[0].id, hoop_connection.mysql_managed[0].id, hoop_connection.mysql[0].id)
+  plugin_name   = "access_control"
+  config        = var.settings.hoop.access_control
+}
