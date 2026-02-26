@@ -9,7 +9,7 @@
 
 resource "hoop_connection" "postgres_managed" {
   count    = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && !try(var.settings.migration.in_progress, false) && try(var.settings.hoop.agent_id, "") != "" ? 1 : 0
-  name     = "${aws_rds_cluster.this.cluster_identifier}-ow"
+  name     = local.cluster_owner_name
   agent_id = var.settings.hoop.agent_id
   type     = "database"
   subtype  = "postgres"
@@ -30,7 +30,7 @@ resource "hoop_connection" "postgres_managed" {
 
 resource "hoop_connection" "postgres" {
   count    = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && !try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && try(var.settings.hoop.agent_id, "") != "" ? 1 : 0
-  name     = "${aws_rds_cluster.this.cluster_identifier}-ow"
+  name     = local.cluster_owner_name
   agent_id = var.settings.hoop.agent_id
   type     = "database"
   subtype  = "postgres"
@@ -51,7 +51,7 @@ resource "hoop_connection" "postgres" {
 
 resource "hoop_connection" "mysql_managed" {
   count    = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && !try(var.settings.migration.in_progress, false) && try(var.settings.hoop.agent_id, "") != "" ? 1 : 0
-  name     = "${aws_rds_cluster.this.cluster_identifier}-ow"
+  name     = local.cluster_owner_name
   agent_id = var.settings.hoop.agent_id
   type     = "database"
   subtype  = "mysql"
@@ -71,7 +71,7 @@ resource "hoop_connection" "mysql_managed" {
 
 resource "hoop_connection" "mysql" {
   count    = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && !try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && try(var.settings.hoop.agent_id, "") != "" ? 1 : 0
-  name     = "${aws_rds_cluster.this.cluster_identifier}-ow"
+  name     = local.cluster_owner_name
   agent_id = var.settings.hoop.agent_id
   type     = "database"
   subtype  = "mysql"
