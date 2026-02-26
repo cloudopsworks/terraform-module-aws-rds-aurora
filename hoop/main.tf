@@ -26,7 +26,7 @@ resource "hoop_connection" "this" {
 }
 
 resource "hoop_plugin_connection" "this" {
-  count         = length(try(var.access_control, [])) > 0
+  count         = length(try(var.access_control, [])) > 0 ? 1 : 0
   connection_id = hoop_connection.this.id
   plugin_name   = "access_control"
   config        = var.access_control
