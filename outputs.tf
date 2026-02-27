@@ -72,3 +72,7 @@ output "cluster_kms_key_arn" {
 output "cluster_kms_key_alias" {
   value = try(var.settings.storage.encryption.enabled, false) && try(var.settings.storage.encryption.kms_key_arn, "") == "" && try(var.settings.storage.encryption.kms_key_id, "") == "" && try(var.settings.storage.encryption.kms_key_alias, "") == "" ? aws_kms_alias.this[0].name : try(var.settings.storage.encryption.kms_key_alias, null)
 }
+
+output "hoop_connection_name" {
+  value = try(var.settings.hoop.enabled, false) && !try(var.settings.migration.enabled, false) ? local.cluster_owner_name : null
+}
