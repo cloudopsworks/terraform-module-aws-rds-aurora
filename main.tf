@@ -66,6 +66,7 @@ resource "aws_rds_cluster" "this" {
   vpc_security_group_ids                = local.security_group_ids
   storage_encrypted                     = try(var.settings.storage.encryption.enabled, false)
   db_subnet_group_name                  = var.vpc.subnet_group
+  db_cluster_parameter_group_name       = try(var.settings.cluster_parameter_group.create, false) ? aws_rds_cluster_parameter_group.this[0].name : null
   kms_key_id                            = try(var.settings.storage.encryption.enabled, false) ? try(aws_kms_key.this[0].arn, data.aws_kms_alias.rds[0].target_key_arn, data.aws_kms_key.rds[0].arn, var.settings.storage.encryption.kms_key_arn) : null
   port                                  = local.rds_port
   final_snapshot_identifier             = "${local.cluster_identifier}-cluster-final-snap-${random_string.final_snapshot.result}"
@@ -149,6 +150,29 @@ resource "aws_rds_cluster_endpoint" "this" {
   static_members              = try(each.value.static_members, null)
   excluded_members            = try(each.value.excluded_members, null)
   tags                        = local.all_tags
+}
+
+resource "aws_rds_cluster_parameter_group" "this" {
+  count       = try(var.settings.cluster_parameter_group.create, false) ? 1 : 0
+  name_prefix = "${local.cluster_identifier}-cluster-param-group"
+  description = "RDS Cluster Parameter Group for ${local.cluster_identifier}"
+  family      = try(var.settings.cluster_parameter_group.family, format("%s%s", var.settings.engine_type, var.settings.engine_version))
+
+  dynamic "parameter" {
+    for_each = try(var.settings.cluster_parameter_group.parameters, [])
+    content {
+      name         = parameter.value.name
+      value        = parameter.value.value
+      apply_method = lookup(parameter.value, "apply_method", null)
+    }
+  }
+  tags = merge(local.all_tags, {
+    cluster-identifier = local.cluster_identifier
+  })
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_db_parameter_group" "this" {
