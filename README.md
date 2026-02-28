@@ -566,15 +566,19 @@ Available targets:
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.24.0 |
-| <a name="provider_null"></a> [null](#provider\_null) | 3.2.4 |
-| <a name="provider_random"></a> [random](#provider\_random) | 3.7.2 |
-| <a name="provider_time"></a> [time](#provider\_time) | 0.13.1 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 6.4 |
+| <a name="provider_null"></a> [null](#provider\_null) | n/a |
+| <a name="provider_random"></a> [random](#provider\_random) | ~> 3.0 |
+| <a name="provider_time"></a> [time](#provider\_time) | n/a |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_mysql"></a> [mysql](#module\_mysql) | ./hoop | n/a |
+| <a name="module_mysql_managed"></a> [mysql\_managed](#module\_mysql\_managed) | ./hoop | n/a |
+| <a name="module_postgres"></a> [postgres](#module\_postgres) | ./hoop | n/a |
+| <a name="module_postgres_managed"></a> [postgres\_managed](#module\_postgres\_managed) | ./hoop | n/a |
 | <a name="module_tags"></a> [tags](#module\_tags) | cloudopsworks/tags/local | 1.0.9 |
 
 ## Resources
@@ -594,6 +598,7 @@ Available targets:
 | [aws_rds_cluster.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster) | resource |
 | [aws_rds_cluster_endpoint.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster_endpoint) | resource |
 | [aws_rds_cluster_instance.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster_instance) | resource |
+| [aws_rds_cluster_parameter_group.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster_parameter_group) | resource |
 | [aws_rds_global_cluster.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_global_cluster) | resource |
 | [aws_secretsmanager_secret.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
 | [aws_secretsmanager_secret_rotation.managed](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_rotation) | resource |
@@ -649,6 +654,7 @@ Available targets:
 | <a name="output_cluster_secrets_credentials_arn"></a> [cluster\_secrets\_credentials\_arn](#output\_cluster\_secrets\_credentials\_arn) | n/a |
 | <a name="output_hoop_connection_mysql"></a> [hoop\_connection\_mysql](#output\_hoop\_connection\_mysql) | n/a |
 | <a name="output_hoop_connection_mysql_managed"></a> [hoop\_connection\_mysql\_managed](#output\_hoop\_connection\_mysql\_managed) | n/a |
+| <a name="output_hoop_connection_name"></a> [hoop\_connection\_name](#output\_hoop\_connection\_name) | n/a |
 | <a name="output_hoop_connection_postgres"></a> [hoop\_connection\_postgres](#output\_hoop\_connection\_postgres) | n/a |
 | <a name="output_hoop_connection_postgres_managed"></a> [hoop\_connection\_postgres\_managed](#output\_hoop\_connection\_postgres\_managed) | n/a |
 | <a name="output_rds_cluster_arn"></a> [rds\_cluster\_arn](#output\_rds\_cluster\_arn) | n/a |
@@ -694,7 +700,7 @@ Please use the [issue tracker](https://github.com/cloudopsworks/terraform-module
 
 ## Copyrights
 
-Copyright © 2024-2025 [Cloud Ops Works LLC](https://cloudops.works)
+Copyright © 2024-2026 [Cloud Ops Works LLC](https://cloudops.works)
 
 
 
