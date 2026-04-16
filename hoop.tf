@@ -1,5 +1,5 @@
 ##
-# (c) 2021-2025
+# (c) 2021-2026
 #     Cloud Ops Works LLC - https://cloudops.works/
 #     Find us on:
 #       GitHub: https://github.com/cloudopsworks
@@ -16,108 +16,57 @@ locals {
   cluster_owner_name          = "${aws_rds_cluster.this.cluster_identifier}-ow"
   master_user_secret_name_arn = try(split(":", aws_rds_cluster.this.master_user_secret[0].secret_arn), [])
   master_user_secret_name     = length(local.master_user_secret_name_arn) - 1 >= 0 ? local.master_user_secret_name_arn[length(local.master_user_secret_name_arn) - 1] : ""
-  hoop_tags                   = length(try(var.settings.hoop.tags, [])) > 0 ? join(" ", [for v in var.settings.hoop.tags : "--tags \"${v}\""]) : ""
-  hoop_connection_postgres_managed = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && !try(var.settings.migration.in_progress, false) && try(var.settings.hoop.agent, "") != "" ? (<<EOT
-hoop admin create connection ${local.cluster_owner_name} \
-  --agent ${var.settings.hoop.agent} \
-  --type database/postgres \
-  -e "HOST=${aws_rds_cluster.this.endpoint}" \
-  -e "PORT=${aws_rds_cluster.this.port}" \
-  -e "USER=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:username" \
-  -e "PASS=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:password" \
-  -e "DB=${aws_rds_cluster.this.database_name}" \
-  -e "SSLMODE=prefer" \
-  --overwrite \
-  ${local.hoop_tags}
-EOT
-  ) : null
-  hoop_connection_postgres = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-postgresql" && !try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && try(var.settings.hoop.agent, "") != "" ? (<<EOT
-hoop admin create connection ${local.cluster_owner_name} \
-  --agent ${var.settings.hoop.agent} \
-  --type database/postgres \
-  -e "HOST=_aws:${aws_secretsmanager_secret.rds[0].name}:host" \
-  -e "PORT=_aws:${aws_secretsmanager_secret.rds[0].name}:port" \
-  -e "USER=_aws:${aws_secretsmanager_secret.rds[0].name}:username" \
-  -e "PASS=_aws:${aws_secretsmanager_secret.rds[0].name}:password" \
-  -e "DB=_aws:${aws_secretsmanager_secret.rds[0].name}:dbname" \
-  -e "SSLMODE=prefer" \
-  --overwrite \
-  ${local.hoop_tags}
-EOT
-  ) : null
-  hoop_connection_mysql_managed = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && !try(var.settings.migration.in_progress, false) && try(var.settings.hoop.agent, "") != "" ? (<<EOT
-hoop admin create connection ${local.cluster_owner_name} \
-  --agent ${var.settings.hoop.agent} \
-  --type database/mysql \
-  -e "HOST=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:host" \
-  -e "PORT=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:port" \
-  -e "USER=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:username" \
-  -e "PASS=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:password" \
-  -e "DB=_aws:${data.aws_secretsmanager_secret.rds_managed[0].name}:dbname" \
-  --overwrite \
-  ${local.hoop_tags}
-EOT
-  ) : null
-  hoop_connection_mysql = try(var.settings.hoop.enabled, false) && var.settings.engine_type == "aurora-mysql" && !try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) && try(var.settings.hoop.agent, "") != "" ? (<<EOT
-hoop admin create connection ${local.cluster_owner_name} \
-  --agent ${var.settings.hoop.agent} \
-  --type database/mysql \
-  -e "HOST=_aws:${aws_secretsmanager_secret.rds[0].name}:host" \
-  -e "PORT=_aws:${aws_secretsmanager_secret.rds[0].name}:port" \
-  -e "USER=_aws:${aws_secretsmanager_secret.rds[0].name}:username" \
-  -e "PASS=_aws:${aws_secretsmanager_secret.rds[0].name}:password" \
-  -e "DB=_aws:${aws_secretsmanager_secret.rds[0].name}:dbname" \
-  --overwrite \
-  ${local.hoop_tags}
-EOT
-  ) : null
-
+  hoop_enabled                = try(var.settings.hoop.enabled, false) && !try(var.settings.migration.enabled, false)
+  hoop_secret_prefix          = try(var.settings.hoop.community, true) ? "_aws" : "_envs/aws"
+  hoop_secret_sep             = try(var.settings.hoop.community, true) ? ":" : "#"
+  hoop_is_postgres            = try(var.settings.engine_type, "") == "aurora-postgresql"
+  hoop_is_managed             = try(var.settings.managed_password, false) && !try(var.settings.migration.in_progress, false)
+  hoop_managed_secret_name    = try(data.aws_secretsmanager_secret.rds_managed[0].name, "")
+  hoop_unmanaged_secret_name  = try(aws_secretsmanager_secret.rds[0].name, "")
 }
 
-resource "null_resource" "hoop_connection_postgres_managed" {
-  count = local.hoop_connection_postgres_managed != null && var.run_hoop ? 1 : 0
-  provisioner "local-exec" {
-    command     = local.hoop_connection_postgres_managed
-    interpreter = ["bash", "-c"]
+output "hoop_connections" {
+  value = local.hoop_enabled ? {
+    "owner" = {
+      name           = local.cluster_owner_name
+      agent_id       = var.settings.hoop.agent_id
+      type           = "database"
+      subtype        = local.hoop_is_postgres ? "postgres" : "mysql"
+      tags           = try(var.settings.hoop.tags, {})
+      access_control = toset(try(var.settings.hoop.access_control, []))
+      access_modes   = { connect = "enabled", exec = "enabled", runbooks = "enabled", schema = "enabled" }
+      import         = try(var.settings.hoop.import, false)
+      secrets = local.hoop_is_postgres && local.hoop_is_managed ? {
+        "envvar:HOST"    = aws_rds_cluster.this.endpoint
+        "envvar:PORT"    = tostring(aws_rds_cluster.this.port)
+        "envvar:USER"    = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_managed_secret_name}${local.hoop_secret_sep}username"
+        "envvar:PASS"    = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_managed_secret_name}${local.hoop_secret_sep}password"
+        "envvar:DB"      = aws_rds_cluster.this.database_name
+        "envvar:SSLMODE" = "prefer"
+        } : local.hoop_is_postgres && !local.hoop_is_managed ? {
+        "envvar:HOST"    = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_unmanaged_secret_name}${local.hoop_secret_sep}host"
+        "envvar:PORT"    = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_unmanaged_secret_name}${local.hoop_secret_sep}port"
+        "envvar:USER"    = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_unmanaged_secret_name}${local.hoop_secret_sep}username"
+        "envvar:PASS"    = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_unmanaged_secret_name}${local.hoop_secret_sep}password"
+        "envvar:DB"      = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_unmanaged_secret_name}${local.hoop_secret_sep}dbname"
+        "envvar:SSLMODE" = "prefer"
+        } : local.hoop_is_managed ? {
+        "envvar:HOST" = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_managed_secret_name}${local.hoop_secret_sep}host"
+        "envvar:PORT" = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_managed_secret_name}${local.hoop_secret_sep}port"
+        "envvar:USER" = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_managed_secret_name}${local.hoop_secret_sep}username"
+        "envvar:PASS" = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_managed_secret_name}${local.hoop_secret_sep}password"
+        "envvar:DB"   = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_managed_secret_name}${local.hoop_secret_sep}dbname"
+        } : {
+        "envvar:HOST" = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_unmanaged_secret_name}${local.hoop_secret_sep}host"
+        "envvar:PORT" = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_unmanaged_secret_name}${local.hoop_secret_sep}port"
+        "envvar:USER" = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_unmanaged_secret_name}${local.hoop_secret_sep}username"
+        "envvar:PASS" = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_unmanaged_secret_name}${local.hoop_secret_sep}password"
+        "envvar:DB"   = "${local.hoop_secret_prefix}${local.hoop_secret_sep}${local.hoop_unmanaged_secret_name}${local.hoop_secret_sep}dbname"
+      }
+    }
+  } : null
+  precondition {
+    condition     = !local.hoop_enabled || try(var.settings.hoop.agent_id, "") != ""
+    error_message = "settings.hoop.agent_id must be set (as a Hoop agent UUID) when settings.hoop.enabled is true."
   }
-}
-
-output "hoop_connection_postgres_managed" {
-  value = local.hoop_connection_postgres_managed
-}
-
-resource "null_resource" "hoop_connection_postgres" {
-  count = local.hoop_connection_postgres != null && var.run_hoop ? 1 : 0
-  provisioner "local-exec" {
-    command     = local.hoop_connection_postgres
-    interpreter = ["bash", "-c"]
-  }
-}
-
-output "hoop_connection_postgres" {
-  value = local.hoop_connection_postgres
-}
-
-resource "null_resource" "hoop_connection_mysql_managed" {
-  count = local.hoop_connection_mysql_managed != null && var.run_hoop ? 1 : 0
-  provisioner "local-exec" {
-    command     = local.hoop_connection_mysql_managed
-    interpreter = ["bash", "-c"]
-  }
-}
-
-output "hoop_connection_mysql_managed" {
-  value = local.hoop_connection_mysql_managed
-}
-
-resource "null_resource" "hoop_connection_mysql" {
-  count = local.hoop_connection_mysql != null && var.run_hoop ? 1 : 0
-  provisioner "local-exec" {
-    command     = local.hoop_connection_mysql
-    interpreter = ["bash", "-c"]
-  }
-}
-
-output "hoop_connection_mysql" {
-  value = local.hoop_connection_mysql
 }

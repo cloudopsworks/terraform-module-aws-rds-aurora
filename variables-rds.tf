@@ -116,10 +116,13 @@
 #     enabled: true | false                        # (Optional) Enable replication from source RDS; default: false
 #     in_progress: true | false                    # (Optional) Operational flag; default: false
 #     source_rds_instance: "rds-instance-id"      # (Required when enabled) Source RDS instance identifier
-#   hoop:                                          # (Optional) Generate Hoop connection commands/outputs
+#   hoop:                                          # (Optional) Generate Hoop connection outputs for terraform-module-hoop-connection
 #     enabled: true | false                        # (Optional) Enable Hoop outputs; default: false
-#     agent: "hoop-agent-name"                    # (Required when enabled) Hoop agent name
-#     tags: ["tag1", "tag2"]                      # (Optional) Extra tags for Hoop connection
+#     agent_id: "hoop-agent-uuid"                 # (Required when enabled) Hoop agent UUID
+#     community: true | false                      # (Optional) Use community secret prefix (_aws:) vs enterprise (_envs/aws#); default: true
+#     import: true | false                         # (Optional) Import existing Hoop connection; default: false
+#     tags: {key: "value"}                         # (Optional) Tags map for Hoop connection
+#     access_control: ["group1"]                   # (Optional) Access control groups for Hoop connection
 #   events:                                        # (Optional) RDS Events subscriptions
 #     enabled: true | false                        # (Optional) Enable event subscriptions; default: false
 #     sns_topic_arn: "arn:aws:sns:...:my-topic"   # (Optional) Existing SNS topic ARN
@@ -169,8 +172,3 @@ variable "security_groups" {
   default     = {}
 }
 
-variable "run_hoop" {
-  description = "Run hoop with agent, be careful with this option, it will run the HOOP command in output in a null_resource"
-  type        = bool
-  default     = false
-}
