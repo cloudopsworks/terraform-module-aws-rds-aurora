@@ -1,1 +1,135 @@
 # Module configuration
+# All required and optional variables for terraform-module-aws-rds-aurora
+# Do NOT include: is_hub, spoke_def, org, extra_tags (managed by Terragrunt hierarchy)
+
+# settings:                                      # (Required) Root map for Aurora configuration
+#   name_prefix: "mydb"                          # (Required) Used to build cluster/instance names when `name` not provided
+#   name: "mydb-name"                            # (Optional) Explicit cluster identifier; overrides name_prefix when set
+#   database_name: "mydb"                        # (Optional) Initial DB name; default: "cluster_db"
+#   master_username: "admin"                     # (Optional) Master user; default: "cluster_root"
+#   engine_type: "aurora-postgresql"             # (Required) One of: "aurora-postgresql", "aurora-mysql"
+#   engine_version: "15.3"                       # (Required) Aurora engine version supported by AWS
+#   engine_mode: "provisioned"                   # (Optional) "provisioned" | "serverless"; default: "provisioned"
+#   instance_size: "db.r6g.large"                # (Required) Instance class; use "db.serverless" for Serverless v1/v2
+#   availability_zones:                          # (Required) List of AZs for cluster/instances
+#     - "us-east-1a"
+#     - "us-east-1b"
+#   rds_port: 5432                               # (Optional) Cluster port; default: 5432 (PG) or 3306 (MySQL)
+#   apply_immediately: true                      # (Optional) Apply changes immediately; default: true
+#   auto_minor_upgrade: false                    # (Optional) Auto minor version upgrade; default: false
+#   publicly_accessible: false                   # (Optional) Make instances public; default: false
+#   deletion_protection: true                    # (Optional) Protect cluster from deletion; default: true
+#   allow_upgrade: true                          # (Optional) Allow major version upgrade; default: true
+#   insights_mode: "standard"                    # (Optional) "standard" | "advanced"; default: "standard"
+#   managed_password: false                      # (Optional) Manage master password via Secrets Manager; default: false
+#   managed_password_rotation: false             # (Optional) Enable rotation for managed password; default: false
+#   password_secret_kms_key_id: ""               # (Optional) KMS key/alias for the password secret
+#   rotation_lambda_name: ""                     # (Optional) External rotation Lambda name
+#   password_rotation_period: 90                 # (Optional) Rotation period in days; default: 90
+#   rotation_duration: "1h"                      # (Optional) Rotation Lambda duration; default: "1h"
+#   recovery:                                    # (Optional) Restore cluster from snapshot or another cluster
+#     enabled: false                             # (Optional) Enable recovery mode; default: false
+#     cluster_identifier: ""                     # (Optional) Source cluster identifier
+#     snapshot_identifier: ""                    # (Optional) Specific snapshot identifier
+#   global_cluster:                              # (Optional) Manage Aurora Global Database
+#     create: false                              # (Optional) Create a new Global Cluster; default: false
+#     id: ""                                     # (Optional) Existing Global Cluster ARN/ID to join
+#   storage:                                     # (Optional) Storage configuration
+#     type: ""                                   # (Optional) "" | "aurora-iopt1" | "io1" | "io2"
+#     iops: 1000                                 # (Optional) Required when type is io1/io2
+#     encryption:                                # (Optional) Storage encryption settings
+#       enabled: false                           # (Optional) Enable at-rest encryption; default: false
+#       kms_key_id: ""                           # (Optional) Existing KMS key ID
+#       kms_key_arn: ""                          # (Optional) Existing KMS key ARN
+#       kms_key_alias: ""                        # (Optional) Existing KMS key alias
+#       deletion_window_in_days: 30              # (Optional) KMS key deletion window; default: 30
+#       rotation_period_in_days: 90              # (Optional) KMS key rotation period; default: 90
+#   monitoring:                                  # (Optional) Enhanced monitoring
+#     interval: 0                                # (Optional) Interval seconds; 0,1,5,10,15,30,60; default: 0 (disabled)
+#   performance:                                 # (Optional) Performance Insights
+#     enabled: false                             # (Optional) Enable Performance Insights; default: false
+#     retention_period: 7                        # (Optional) Retention days; default: 7
+#     encryption:                                # (Optional) PI encryption settings
+#       enabled: false
+#       kms_key_alias: ""
+#       kms_key_id: ""
+#       kms_key_arn: ""
+#   maintenance:                                 # (Optional) Maintenance window
+#     window: "sun:03:00-sun:04:00"             # (Optional) Default: sun:03:00-sun:04:00
+#   backup:                                      # (Optional) Backup configuration
+#     retention_period: 7                        # (Optional) Snapshot retention days; default: 5
+#     window: "01:00-02:30"                      # (Optional) Backup window; default: "00:45-02:45"
+#     copy_tags: true                            # (Optional) Copy tags to snapshots; default: true
+#   replicas:                                    # (Optional) Replica instance configuration
+#     count: 2                                   # (Optional) Number of instances; default: 1
+#     replica_0:
+#       availability_zone: "us-east-1a"          # (Optional) AZ override for this replica
+#       promotion_tier: 10                        # (Optional) Failover priority 1-15
+#       maintenance_window: "wed:03:00-wed:04:00" # (Optional) Per-instance maintenance window
+#     replica_1:
+#       availability_zone: "us-east-1b"
+#       instance_size: "db.r5.xlarge"             # (Optional) Instance class override
+#   serverless:                                   # (Optional) Serverless mode
+#     enabled: false
+#     v2: false
+#     scaling_configuration:
+#       min_capacity: 0.5
+#       max_capacity: 16.0
+#       seconds_until_auto_pause: 300
+#       auto_pause: false                         # (Optional) v1 only
+#       timeout_action: ForceApplyCapacityChange  # (Optional) v1 only
+#   iam:                                          # (Optional) IAM settings
+#     database_authentication_enabled: true
+#     authentication_roles: []
+#   cloudwatch:                                   # (Optional) CloudWatch logging
+#     retention_days: 90
+#     retain: true
+#     log_exports:
+#       - postgresql
+#   parameter_group:                              # (Optional) DB parameter group
+#     create: false
+#     family: "aurora-postgresql15"
+#     skip_destroy: false
+#     parameters: []
+#   migration:                                    # (Optional) Migration from RDS instance
+#     enabled: false
+#     in_progress: false
+#     source_rds_instance: ""
+#   hoop:                                         # (Optional) Hoop connection output settings
+#     enabled: false
+#     agent_id: ""
+#     community: true
+#     import: false
+#     tags: {}
+#     access_control: []
+#   events:                                       # (Optional) RDS event subscriptions
+#     enabled: false
+#     sns_topic_arn: ""
+#     sns_topic_name: ""
+#     categories: []
+#     instances: false
+#   custom_endpoints:                             # (Optional) Additional cluster endpoints
+#     - name: "custom-endpoint-1"
+#       type: "READER"
+#       static_members: []
+#       excluded_members: []
+settings: {}
+
+# vpc:                                            # (Required) Networking settings for the cluster
+#   vpc_id: "vpc-12345678901234"                  # (Required) Target VPC ID
+#   subnet_group: "db-subnet-group-name"          # (Required) Existing DB subnet group name
+#   subnet_ids:                                   # (Optional) Subnet IDs for auxiliary lookups
+#     - "subnet-abcdef123456789"
+#     - "subnet-abcdef123456781"
+#     - "subnet-abcdef123456782"
+vpc: {}
+
+# security_groups:                                # (Required) Ingress configuration for database port
+#   create: false                                 # (Optional) Create SG or use existing; default: false
+#   name: "sg-rds"                                # (Required when create=false) Existing SG name
+#   group_ids: []                                 # (Optional) Extra SG IDs to allow ingress from
+#   allow_cidrs:                                  # (Optional) CIDR blocks allowed to connect
+#     - "10.0.0.0/16"
+#   allow_security_groups:                        # (Optional) SG names to allow ingress from
+#     - "sg-name-123456"
+security_groups: {}
