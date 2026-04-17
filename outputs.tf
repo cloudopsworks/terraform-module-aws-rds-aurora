@@ -18,6 +18,10 @@ output "rds_security_group_ids" {
   value = local.security_group_ids
 }
 
+output "rds_cluster_identifier" {
+  value = aws_rds_cluster.this.cluster_identifier
+}
+
 output "rds_cluster_arn" {
   value = aws_rds_cluster.this.arn
 }
