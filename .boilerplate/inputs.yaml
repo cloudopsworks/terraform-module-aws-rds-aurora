@@ -7,7 +7,7 @@
 #   name: "mydb-name"                            # (Optional) Explicit cluster identifier; overrides name_prefix when set
 #   database_name: "mydb"                        # (Optional) Initial DB name; default: "cluster_db".
 #                                                #            Set explicitly to null to skip the initial database, which also disables the module managed secret
-#   master_username: "admin"                     # (Optional) Master user; default: "cluster_root"
+#   master_username: "admin"                     # (Optional) Master user; default: "cluster_root". Forced to null when migration.enabled=true
 #   engine_type: "aurora-postgresql"             # (Required) One of: "aurora-postgresql", "aurora-mysql"
 #   engine_version: "15.3"                       # (Required) Aurora engine version supported by AWS
 #   engine_mode: "provisioned"                   # (Optional) "provisioned" | "serverless"; default: "provisioned"
@@ -15,7 +15,7 @@
 #   availability_zones:                          # (Required) List of AZs for cluster/instances
 #     - "us-east-1a"
 #     - "us-east-1b"
-#   rds_port: 5432                               # (Optional) Cluster port; default: 5432 (PG) or 3306 (MySQL)
+#   port: 5432                                   # (Optional) Cluster port; default: 5432. Use 3306 for aurora-mysql
 #   apply_immediately: true                      # (Optional) Apply changes immediately; default: true
 #   auto_minor_upgrade: false                    # (Optional) Auto minor version upgrade; default: false
 #   publicly_accessible: false                   # (Optional) Make instances public; default: false
@@ -84,6 +84,11 @@
 #   maintenance:                                 # (Optional) Maintenance window
 #     window: "sun:03:00-sun:04:00"             # (Optional) Default: sun:03:00-sun:04:00
 #   backup:                                      # (Optional) Backup configuration
+#     enabled: false                             # (Optional) Tag the cluster for an external AWS Backup plan; default: false
+#     only_tag: true                             # (Optional) Only tag for AWS Backup, do not manage a plan; default: true.
+#                                                #            Applies only when backup.enabled is true
+#     schedule: "daily"                          # (Optional) Value of the aws-backup-schedule tag; default: "daily".
+#                                                #            Applies only when backup.enabled and backup.only_tag are true
 #     retention_period: 7                        # (Optional) Snapshot retention days; default: 5
 #     window: "01:00-02:30"                      # (Optional) Backup window; default: "00:45-02:45"
 #     copy_tags: true                            # (Optional) Copy tags to snapshots; default: true
@@ -119,15 +124,22 @@
 #                                                 #            managed key such as aws/rds grants none and cannot be edited
 #     log_exports:                                # (Optional) Enabled log exports; default: [postgresql] for PG, [audit, error] for MySQL
 #       - postgresql
-#   parameter_group:                              # (Optional) DB parameter group
-#     create: false
-#     family: "aurora-postgresql15"
-#     skip_destroy: false
-#     parameters: []
-#   migration:                                    # (Optional) Migration from RDS instance
-#     enabled: false
-#     in_progress: false
-#     source_rds_instance: ""
+#   cluster_parameter_group:                      # (Optional) Cluster-wide parameter group, applied to the cluster
+#     create: false                               # (Optional) Create a dedicated DB cluster parameter group; default: false
+#     family: "aurora-postgresql15"               # (Optional) If not set, computed as engine_type + engine_version
+#     parameters:                                 # (Optional) List of {name, value, apply_method}; default: []
+#       - name: "PARAM NAME"
+#         value: "PARAM VALUE"
+#         apply_method: "immediate"               # (Optional) "immediate" | "pending-reboot"
+#   parameter_group:                              # (Optional) Instance parameter group, applied to every cluster instance
+#     create: false                               # (Optional) Create a dedicated DB parameter group; default: false
+#     family: "aurora-postgresql15"               # (Optional) If not set, computed as engine_type + engine_version
+#     skip_destroy: false                         # (Optional) Keep the parameter group on destroy; default: false
+#     parameters: []                              # (Optional) List of {name, value, apply_method}; default: []
+#   migration:                                    # (Optional) Migration from an existing RDS instance by replication
+#     enabled: false                              # (Optional) Enable replication from the source instance; default: false. When true the
+#                                                 #            cluster inherits its source credentials, so no master password is generated
+#     source_rds_instance: ""                     # (Required when enabled) Source RDS instance identifier
 #   hoop:                                         # (Optional) Hoop connection output settings
 #     enabled: false
 #     agent_id: ""
