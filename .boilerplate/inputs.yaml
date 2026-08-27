@@ -5,7 +5,8 @@
 # settings:                                      # (Required) Root map for Aurora configuration
 #   name_prefix: "mydb"                          # (Required) Used to build cluster/instance names when `name` not provided
 #   name: "mydb-name"                            # (Optional) Explicit cluster identifier; overrides name_prefix when set
-#   database_name: "mydb"                        # (Optional) Initial DB name; default: "cluster_db"
+#   database_name: "mydb"                        # (Optional) Initial DB name; default: "cluster_db".
+#                                                #            Set explicitly to null to skip the initial database, which also disables the module managed secret
 #   master_username: "admin"                     # (Optional) Master user; default: "cluster_root"
 #   engine_type: "aurora-postgresql"             # (Required) One of: "aurora-postgresql", "aurora-mysql"
 #   engine_version: "15.3"                       # (Required) Aurora engine version supported by AWS
@@ -21,11 +22,15 @@
 #   deletion_protection: true                    # (Optional) Protect cluster from deletion; default: true
 #   allow_upgrade: true                          # (Optional) Allow major version upgrade; default: true
 #   insights_mode: "standard"                    # (Optional) "standard" | "advanced"; default: "standard"
-#   managed_password: false                      # (Optional) Manage master password via Secrets Manager; default: false
-#   managed_password_rotation: false             # (Optional) Enable rotation for managed password; default: false
-#   password_secret_kms_key_id: ""               # (Optional) KMS key/alias for the password secret
-#   rotation_lambda_name: ""                     # (Optional) External rotation Lambda name
-#   password_rotation_period: 90                 # (Optional) Rotation period in days; default: 90
+#   managed_password: false                      # (Optional) Delegate the master password to AWS Secrets Manager; default: false.
+#                                                #            When false the module generates it and stores it on its own secret, handing it to the
+#                                                #            cluster through write-only arguments so it never lands in state. No password is
+#                                                #            generated when migration.enabled or recovery.enabled is true
+#   managed_password_rotation: false             # (Optional) Enable rotation of the AWS managed secret; default: false. Only applies when managed_password is true
+#   password_secret_kms_key_id: ""               # (Optional) KMS key ID or alias for the password secret, applied whether the secret is AWS managed
+#                                                #            or module managed; default: "" (aws/secretsmanager)
+#   rotation_lambda_name: ""                     # (Optional) External rotation Lambda name; only applies when managed_password is false
+#   password_rotation_period: 90                 # (Optional) Rotation period in days; default: 90. Also the regeneration cadence of the module generated password
 #   rotation_duration: "1h"                      # (Optional) Rotation Lambda duration; default: "1h"
 #   recovery:                                    # (Optional) Restore cluster from snapshot or another cluster
 #     enabled: false                             # (Optional) Enable recovery mode; default: false
@@ -34,26 +39,48 @@
 #   global_cluster:                              # (Optional) Manage Aurora Global Database
 #     create: false                              # (Optional) Create a new Global Cluster; default: false
 #     id: ""                                     # (Optional) Existing Global Cluster ARN/ID to join
+#   encryption:                                  # (Optional) Cluster encryption; every key takes precedence over its storage.encryption counterpart
+#     enabled: false                             # (Optional) Enable at-rest encryption; default: false
+#     kms_key_id: ""                             # (Optional) Existing KMS key ID
+#     kms_key_arn: ""                            # (Optional) Existing KMS key ARN
+#     kms_key_alias: ""                          # (Optional) Existing KMS key alias, used only when no key ID or ARN is set; "alias/" is added when missing.
+#                                                #            When none of the three is set anywhere, the module creates and manages its own key, whose policy
+#                                                #            grants the account root, RDS via kms:ViaService, and CloudWatch Logs for /aws/rds/cluster/<id>/*
+#     deletion_window: 30                        # (Optional) Module managed key deletion window; default: 30
+#     rotation_enabled: true                     # (Optional) Enable automatic rotation of the module managed key; default: true
+#     rotation_period: 90                        # (Optional) Module managed key rotation period; default: 90
+#     multi_region: false                        # (Optional) Create the module managed key as multi-region; default: false
 #   storage:                                     # (Optional) Storage configuration
 #     type: ""                                   # (Optional) "" | "aurora-iopt1" | "io1" | "io2"
 #     iops: 1000                                 # (Optional) Required when type is io1/io2
-#     encryption:                                # (Optional) Storage encryption settings
+#     encryption:                                # (Optional) Storage encryption settings; superseded by the top level encryption block
 #       enabled: false                           # (Optional) Enable at-rest encryption; default: false
 #       kms_key_id: ""                           # (Optional) Existing KMS key ID
 #       kms_key_arn: ""                          # (Optional) Existing KMS key ARN
 #       kms_key_alias: ""                        # (Optional) Existing KMS key alias
 #       deletion_window_in_days: 30              # (Optional) KMS key deletion window; default: 30
 #       rotation_period_in_days: 90              # (Optional) KMS key rotation period; default: 90
+#       rotation_enabled: true                   # (Optional) Enable automatic rotation of the module managed key; default: true
+#       multi_region: false                      # (Optional) Create the module managed key as multi-region; default: false
 #   monitoring:                                  # (Optional) Enhanced monitoring
 #     interval: 0                                # (Optional) Interval seconds; 0,1,5,10,15,30,60; default: 0 (disabled)
-#   performance:                                 # (Optional) Performance Insights
+#   performance:                                 # (Optional) Performance Insights. Alias: performance_insights, which takes precedence
+#     enabled: false                             # (Optional) Enable Performance Insights; default: false
+#     retention_period: 7                        # (Optional) Retention days; default: 7 (7, 731 or any multiple of 31)
+#     encryption:                                # (Optional) PI encryption settings
+#       enabled: false                           # (Optional) Enable PI encryption; default: false
+#       kms_key_alias: ""                        # (Optional) Existing KMS alias, used only when no key ID or ARN is set; "alias/" is added when missing.
+#                                                #            When none is set the module creates and manages its own Performance Insights key
+#       kms_key_id: ""                           # (Optional) Existing KMS key ID
+#       kms_key_arn: ""                          # (Optional) Existing KMS key ARN
+#   performance_insights:                        # (Optional) Alias of the performance block; every key takes precedence over its performance counterpart
 #     enabled: false                             # (Optional) Enable Performance Insights; default: false
 #     retention_period: 7                        # (Optional) Retention days; default: 7
-#     encryption:                                # (Optional) PI encryption settings
-#       enabled: false
-#       kms_key_alias: ""
-#       kms_key_id: ""
-#       kms_key_arn: ""
+#     kms_key_id: ""                             # (Optional) Existing KMS key ID for Performance Insights
+#     kms_key_alias: ""                          # (Optional) Existing KMS key alias for Performance Insights
+#     kms_key_arn: ""                            # (Optional) Existing KMS key ARN for Performance Insights
+#     encryption:                                # (Optional) Same shape as performance.encryption
+#       enabled: false                           # (Optional) Enable PI encryption; default: false
 #   maintenance:                                 # (Optional) Maintenance window
 #     window: "sun:03:00-sun:04:00"             # (Optional) Default: sun:03:00-sun:04:00
 #   backup:                                      # (Optional) Backup configuration
@@ -82,9 +109,15 @@
 #     database_authentication_enabled: true
 #     authentication_roles: []
 #   cloudwatch:                                   # (Optional) CloudWatch logging
-#     retention_days: 90
-#     retain: true
-#     log_exports:
+#     retention_days: 90                          # (Optional) Log retention days; default: 90
+#     retain: true                                # (Optional) Prevent log group destroy on delete; default: true
+#     kms_key_id: ""                              # (Optional) KMS key ID or ARN used to encrypt the log groups; default: "" (AWS managed)
+#     kms_key_alias: ""                           # (Optional) KMS key alias used to encrypt the log groups, used only when kms_key_id is not set;
+#                                                 #            "alias/" is added when missing. When neither is set, falls back to the module managed key
+#                                                 #            only, never to an operator supplied encryption key, and to AWS default encryption when the
+#                                                 #            module owns no key. An operator key is not guaranteed to grant CloudWatch Logs, and an AWS
+#                                                 #            managed key such as aws/rds grants none and cannot be edited
+#     log_exports:                                # (Optional) Enabled log exports; default: [postgresql] for PG, [audit, error] for MySQL
 #       - postgresql
 #   parameter_group:                              # (Optional) DB parameter group
 #     create: false

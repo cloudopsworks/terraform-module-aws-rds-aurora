@@ -8,7 +8,7 @@
 #
 
 data "aws_secretsmanager_secret" "rds_managed" {
-  count = try(var.settings.managed_password, false) && try(var.settings.hoop.enabled, false) && !try(var.settings.migration.in_progress, false) ? 1 : 0
+  count = local.manage_master_password && try(var.settings.hoop.enabled, false) ? 1 : 0
   arn   = aws_rds_cluster.this.master_user_secret[count.index].secret_arn
 }
 
@@ -16,11 +16,11 @@ locals {
   cluster_owner_name          = "${aws_rds_cluster.this.cluster_identifier}-ow"
   master_user_secret_name_arn = try(split(":", aws_rds_cluster.this.master_user_secret[0].secret_arn), [])
   master_user_secret_name     = length(local.master_user_secret_name_arn) - 1 >= 0 ? local.master_user_secret_name_arn[length(local.master_user_secret_name_arn) - 1] : ""
-  hoop_enabled                = try(var.settings.hoop.enabled, false) && !try(var.settings.migration.enabled, false)
+  hoop_enabled                = try(var.settings.hoop.enabled, false) && !local.migration_enabled
   hoop_secret_prefix          = try(var.settings.hoop.community, true) ? "_aws" : "_envs/aws"
   hoop_secret_sep             = try(var.settings.hoop.community, true) ? ":" : "#"
   hoop_is_postgres            = try(var.settings.engine_type, "") == "aurora-postgresql"
-  hoop_is_managed             = try(var.settings.managed_password, false) && !try(var.settings.migration.in_progress, false)
+  hoop_is_managed             = local.manage_master_password
   hoop_managed_secret_name    = try(data.aws_secretsmanager_secret.rds_managed[0].name, "")
   hoop_unmanaged_secret_name  = try(aws_secretsmanager_secret.rds[0].name, "")
 }

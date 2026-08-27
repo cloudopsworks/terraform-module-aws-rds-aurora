@@ -12,7 +12,7 @@
 
 # Terraform AWS RDS Aurora Cluster/DB Module
 
-
+ [![Latest Release](https://img.shields.io/github/release/cloudopsworks/terraform-module-aws-rds-aurora.svg?style=for-the-badge)](https://github.com/cloudopsworks/terraform-module-aws-rds-aurora/releases/latest) [![Last Updated](https://img.shields.io/github/last-commit/cloudopsworks/terraform-module-aws-rds-aurora.svg?style=for-the-badge)](https://github.com/cloudopsworks/terraform-module-aws-rds-aurora/commits)
 
 
 Production-ready Terraform module to provision Amazon Aurora (MySQL or PostgreSQL) clusters on AWS.
@@ -58,6 +58,31 @@ Integration with Terragrunt is straightforward. If you work with Gruntwork-style
 similar boilerplate (often stored under a `.boilerplate` directory), you can point your Terragrunt
 configuration at this module and pass inputs using plain HCL maps. This README provides a full usage
 reference and a complete set of Terragrunt examples to get you up and running quickly.
+
+### Requirements and behavior notes
+
+| Topic | Detail |
+| --- | --- |
+| Terraform | `>= 1.11.1` — required by the write-only master password arguments |
+| AWS provider | `~> 6.35` |
+| Master password | When `settings.managed_password` is `false` the module generates the password and passes it to the cluster through the write-only arguments `master_password_wo` / `master_password_wo_version`, so the plaintext value never lands in the Terraform state of the cluster. The credentials are published to a module owned Secrets Manager secret |
+| No password generated | Nothing is generated when `settings.migration.enabled` or `settings.recovery.enabled` is `true`. A migration cluster inherits the credentials of its replication source and a restored cluster those of its snapshot, so a generated password would be written to a secret that does not match the database |
+| Password rotation | `settings.password_rotation_period` drives AWS Secrets Manager rotation when `settings.managed_password_rotation` is `true`, and the regeneration cadence of the module generated password otherwise. `aws_rds_cluster` has no native rotation arguments, so the rotation of the AWS managed secret is declared as its own `aws_secretsmanager_secret_rotation` |
+| Secret KMS key | `settings.password_secret_kms_key_id` applies whether the secret is AWS managed or module managed, and no longer requires rotation to be enabled |
+| Subnet group | The module never creates a DB subnet group, `vpc.subnet_group` must reference an existing one |
+| Encryption key | `settings.encryption` takes precedence over `settings.storage.encryption`. Supply `kms_key_id`, `kms_key_arn` or `kms_key_alias`; the alias is resolved to its target key and the `alias/` prefix is added when missing. When encryption is enabled and none is set, the module creates and manages its own KMS key and alias |
+| CloudWatch and Performance Insights keys | Each takes its own key settings, `settings.cloudwatch.kms_key_id` / `kms_key_alias` and `settings.performance.encryption.*`. When none is set the CloudWatch log groups fall back to the module managed key only, never to an operator supplied encryption key, and to AWS default encryption when the module owns no key. CloudWatch Logs can only use a key whose policy grants it, and the module can guarantee that on its own key alone. An AWS managed key such as `aws/rds` carries no such grant and its policy cannot be edited, so reusing it for logs fails at apply |
+| Module managed key policy | The storage key created by the module grants `kms:*` to the account root, RDS access through `kms:ViaService` scoped to `rds.<region>.amazonaws.com` and the calling account, and `logs.<region>.amazonaws.com` scoped by encryption context to `/aws/rds/cluster/<identifier>/*`. The Performance Insights key carries its own policy with the root and RDS statements; Performance Insights creates its own grants through the RDS statement |
+| Initial database | `settings.database_name` set explicitly to `null` skips the initial database and disables the module managed Secrets Manager secret |
+
+### Upgrade notes
+
+| Change | What to do |
+| --- | --- |
+| CloudWatch log group key | The log groups no longer fall back to `settings.storage.encryption.kms_key_arn`. A deployment that supplied its own storage key and relied on that fallback must now set `settings.cloudwatch.kms_key_id` (or `kms_key_alias`) explicitly, otherwise the log groups move to AWS default encryption on the next apply |
+| Master password | The generated password moves from `master_password` to the write-only `master_password_wo` / `master_password_wo_version` arguments. The first apply after the upgrade rotates the master password once and republishes the module managed secret |
+| Snapshot recovery | With `settings.recovery.enabled` the module no longer generates a password or creates a Secrets Manager secret. A deployment that restored from a snapshot and relied on the module managed secret must read the credentials from the snapshot source instead |
+| Performance Insights key | Enabling `settings.performance.encryption` no longer requires module managed storage encryption. The Performance Insights key now carries its own policy, applied in place to an existing module managed key |
 
 ## Usage
 
@@ -141,26 +166,48 @@ Full variables documentation (YAML with inline comments):
 #   apply_immediately: true | false               # (Optional) Apply changes immediately; default: true
 #   insights_mode: "standard" | "advanced"        # (Optional) Database Insights mode; default: "standard"
 #   publicly_accessible: true | false             # (Optional) Make instances public; default: false
+#   encryption:                                   # (Optional) Cluster encryption settings; takes precedence over storage.encryption
+#     enabled: true | false                       # (Optional) Enable at-rest encryption; default: false. Falls back to storage.encryption.enabled
+#     kms_key_id: "1234abcd-..."                 # (Optional) Existing KMS key id. Falls back to storage.encryption.kms_key_id
+#     kms_key_arn: "arn:aws:kms:...:key/..."     # (Optional) Existing KMS key ARN. Falls back to storage.encryption.kms_key_arn
+#     kms_key_alias: "alias/my-key"              # (Optional) Existing KMS key alias, used only when no key id or ARN is set; the "alias/" prefix is added when missing.
+#                                                #            Falls back to storage.encryption.kms_key_alias. When no key id, ARN or alias is set anywhere,
+#                                                #            the module creates and manages its own KMS key
+#     deletion_window: 30                         # (Optional) Deletion window in days for the module managed key; default: 30
+#     rotation_enabled: true | false              # (Optional) Enable automatic rotation of the module managed key; default: true
+#     rotation_period: 90                         # (Optional) Rotation period in days for the module managed key; default: 90
+#     multi_region: true | false                  # (Optional) Create the module managed key as multi-region; default: false
 #   storage:
-#     encryption:
+#     encryption:                                 # (Optional) Superseded by the top level encryption block when both are set
 #       enabled: true | false                     # (Optional) Enable at-rest encryption; default: false
 #       kms_key_id: "1234abcd-..."               # (Optional) Use existing KMS key id
 #       kms_key_arn: "arn:aws:kms:...:key/..."   # (Optional) Use existing KMS key ARN
 #       kms_key_alias: "alias/aws/rds"           # (Optional) Use existing KMS key alias (with or without "alias/" prefix)
 #       deletion_window_in_days: 30               # (Optional) If module creates KMS key; default: 30
 #       rotation_period_in_days: 90               # (Optional) If module creates KMS key; default: 90
+#       rotation_enabled: true | false            # (Optional) Enable automatic rotation of the module managed key; default: true
+#       multi_region: true | false                # (Optional) Create the module managed key as multi-region; default: false
 #     type: "" | "aurora-iopt1" | "io1" | "io2" # (Optional) Storage type; defaults to provider/account default; iops required for io1/io2
 #     iops: 1000                                  # (Optional) Required when type is io1/io2
 #   monitoring:
 #     interval: 0                                 # (Optional) Enhanced monitoring interval seconds; one of: 0,1,5,10,15,30,60; default: 0 (disabled)
-#   performance:
+#   performance:                                  # (Optional) Alias: performance_insights, which takes precedence when both are set
 #     enabled: true | false                       # (Optional) Enable Performance Insights; default: false
 #     retention_period: 7                         # (Optional) Retention in days; default: 7
 #     encryption:
 #       enabled: true | false                     # (Optional) Enable encryption for PI; default: false
-#       kms_key_alias: "alias/pi-key"            # (Optional) Existing KMS alias
+#       kms_key_alias: "alias/pi-key"            # (Optional) Existing KMS alias, used only when no key id or ARN is set; "alias/" is added when missing.
+#                                                #            When none is set the module creates and manages its own Performance Insights key
 #       kms_key_id: "abcd-1234"                  # (Optional) Existing KMS key id
 #       kms_key_arn: "arn:aws:kms:..."           # (Optional) Existing KMS key arn
+#   performance_insights:                         # (Optional) Alias of the performance block; every key takes precedence over its performance counterpart
+#     enabled: true | false                       # (Optional) Enable Performance Insights; default: false
+#     retention_period: 7                         # (Optional) Retention in days; default: 7
+#     kms_key_id: "abcd-1234"                    # (Optional) Existing KMS key id for Performance Insights
+#     kms_key_alias: "alias/pi-key"              # (Optional) Existing KMS key alias for Performance Insights
+#     kms_key_arn: "arn:aws:kms:..."             # (Optional) Existing KMS key ARN for Performance Insights
+#     encryption:                                 # (Optional) Same shape as performance.encryption
+#       enabled: true | false                     # (Optional) Enable encryption for PI; default: false
 #   maintenance:
 #     window: "sun:03:00-sun:04:00"               # (Optional) Preferred maintenance window; default: sun:03:00-sun:04:00
 #   backup:
@@ -188,11 +235,14 @@ Full variables documentation (YAML with inline comments):
 #       seconds_until_auto_pause: 300              # (Optional) Auto pause after seconds (v1 and v2)
 #       auto_pause: true | false                   # (Optional) v1 only
 #       timeout_action: ForceApplyCapacityChange   # (Optional) v1 only; ForceApplyCapacityChange | RollbackCapacityChange
-#   managed_password: true | false                 # (Optional) Store/manage master password in Secrets Manager; default: false; do not set if migration.enabled=true
-#   managed_password_rotation: true | false        # (Optional) Enable rotation for managed password; default: false
-#   password_secret_kms_key_id: "arn:aws:kms:..." # (Optional) KMS key/alias for the password secret when rotation enabled
-#   rotation_lambda_name: "rds-rotation-lambda"   # (Optional) External rotation Lambda name if not managed by AWS
-#   password_rotation_period: 90                   # (Optional) Rotation period in days; default: 90
+#   managed_password: true | false                 # (Optional) Delegate the master password to AWS Secrets Manager; default: false. Ignored when migration.enabled=true.
+#                                                  #            When false, the module generates the password and stores it on its own Secrets Manager secret,
+#                                                  #            delivering it to the cluster through the write-only master_password_wo arguments so it never
+#                                                  #            lands in state. No password is generated when migration.enabled or recovery.enabled is true
+#   managed_password_rotation: true | false        # (Optional) Enable rotation of the AWS managed secret; default: false. Only applies when managed_password is true
+#   password_secret_kms_key_id: "arn:aws:kms:..." # (Optional) KMS key ID or alias for the password secret, applied whether the secret is AWS managed or module managed
+#   rotation_lambda_name: "rds-rotation-lambda"   # (Optional) External rotation Lambda name; only applies when managed_password is false
+#   password_rotation_period: 90                   # (Optional) Rotation period in days; default: 90. Also the regeneration cadence of the module generated password
 #   rotation_duration: "1h"                        # (Optional) Rotation Lambda duration; default: 1h
 #   iam:
 #     database_authentication_enabled: true | false # (Optional) Enable IAM DB auth; default: true
@@ -201,6 +251,11 @@ Full variables documentation (YAML with inline comments):
 #   cloudwatch:
 #     retention_days: 90                           # (Optional) Log retention days; default: 90
 #     retain: true | false                         # (Optional) Prevent log group destroy on delete; default: true
+#     kms_key_id: "arn:aws:kms:..."               # (Optional) KMS key ID or ARN used to encrypt the log groups; default: null (AWS managed)
+#     kms_key_alias: "alias/my-key"               # (Optional) KMS key alias used to encrypt the log groups, used only when kms_key_id is not set;
+#                                                 #            the "alias/" prefix is added when missing. When neither is set, falls back to the module
+#                                                 #            managed key only, never to an operator supplied encryption key, and to AWS default
+#                                                 #            encryption when the module owns no key
 #     log_exports:
 #       - error
 #       - audit
@@ -551,22 +606,24 @@ Available targets:
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.11.1 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6.35 |
+| <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.6 |
+| <a name="requirement_time"></a> [time](#requirement\_time) | ~> 0.12 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 6.35 |
-| <a name="provider_random"></a> [random](#provider\_random) | n/a |
-| <a name="provider_time"></a> [time](#provider\_time) | n/a |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.41.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.8.1 |
+| <a name="provider_time"></a> [time](#provider\_time) | 0.13.1 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_tags"></a> [tags](#module\_tags) | cloudopsworks/tags/local | 1.0.9 |
+| <a name="module_tags"></a> [tags](#module\_tags) | cloudopsworks/tags/local | 1.0.10 |
 
 ## Resources
 
@@ -600,13 +657,17 @@ Available targets:
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_db_cluster_snapshot.recovery](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/db_cluster_snapshot) | data source |
 | [aws_db_instance.migration_source](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/db_instance) | data source |
-| [aws_iam_policy_document.rds_kms_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.kms](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.kms_perf](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.rds_monitoring](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_kms_alias.cw](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_alias) | data source |
 | [aws_kms_alias.perf](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_alias) | data source |
 | [aws_kms_alias.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_alias) | data source |
+| [aws_kms_key.cw](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_key) | data source |
 | [aws_kms_key.perf](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_key) | data source |
 | [aws_kms_key.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_key) | data source |
 | [aws_lambda_function.rotation_function](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/lambda_function) | data source |
+| [aws_partition.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/partition) | data source |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 | [aws_secretsmanager_secret.rds_managed](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/secretsmanager_secret) | data source |
 | [aws_security_group.allow_sg](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/security_group) | data source |
@@ -629,23 +690,25 @@ Available targets:
 
 | Name | Description |
 |------|-------------|
-| <a name="output_cluster_kms_key_alias"></a> [cluster\_kms\_key\_alias](#output\_cluster\_kms\_key\_alias) | n/a |
-| <a name="output_cluster_kms_key_arn"></a> [cluster\_kms\_key\_arn](#output\_cluster\_kms\_key\_arn) | n/a |
-| <a name="output_cluster_kms_key_id"></a> [cluster\_kms\_key\_id](#output\_cluster\_kms\_key\_id) | n/a |
-| <a name="output_cluster_secrets_credentials"></a> [cluster\_secrets\_credentials](#output\_cluster\_secrets\_credentials) | n/a |
-| <a name="output_cluster_secrets_credentials_arn"></a> [cluster\_secrets\_credentials\_arn](#output\_cluster\_secrets\_credentials\_arn) | n/a |
+| <a name="output_cluster_cloudwatch_kms_key_arn"></a> [cluster\_cloudwatch\_kms\_key\_arn](#output\_cluster\_cloudwatch\_kms\_key\_arn) | The ARN of the KMS key encrypting the cluster CloudWatch log groups, resolved from settings.cloudwatch or falling back to the module managed key, null when the log groups use AWS default encryption |
+| <a name="output_cluster_kms_key_alias"></a> [cluster\_kms\_key\_alias](#output\_cluster\_kms\_key\_alias) | The alias of the KMS key encrypting the cluster storage, the module managed alias when the module owns the key, the configured alias otherwise, null when none applies |
+| <a name="output_cluster_kms_key_arn"></a> [cluster\_kms\_key\_arn](#output\_cluster\_kms\_key\_arn) | The ARN of the KMS key encrypting the cluster storage, null when encryption is disabled |
+| <a name="output_cluster_kms_key_id"></a> [cluster\_kms\_key\_id](#output\_cluster\_kms\_key\_id) | The ID of the KMS key encrypting the cluster storage, module managed or resolved from the configured key ID or alias, null when encryption is disabled |
+| <a name="output_cluster_performance_insights_kms_key_arn"></a> [cluster\_performance\_insights\_kms\_key\_arn](#output\_cluster\_performance\_insights\_kms\_key\_arn) | The ARN of the KMS key encrypting Performance Insights, null when Performance Insights or its encryption is disabled |
+| <a name="output_cluster_secrets_credentials"></a> [cluster\_secrets\_credentials](#output\_cluster\_secrets\_credentials) | The name of the Secrets Manager secret holding the master credentials, AWS managed when settings.managed\_password is true, module managed otherwise, null when migrating or restoring from a snapshot |
+| <a name="output_cluster_secrets_credentials_arn"></a> [cluster\_secrets\_credentials\_arn](#output\_cluster\_secrets\_credentials\_arn) | The ARN of the Secrets Manager secret holding the master credentials, AWS managed when settings.managed\_password is true, module managed otherwise, null when migrating or restoring from a snapshot |
 | <a name="output_hoop_connections"></a> [hoop\_connections](#output\_hoop\_connections) | n/a |
-| <a name="output_rds_cluster_arn"></a> [rds\_cluster\_arn](#output\_rds\_cluster\_arn) | n/a |
-| <a name="output_rds_cluster_endpoint"></a> [rds\_cluster\_endpoint](#output\_rds\_cluster\_endpoint) | n/a |
-| <a name="output_rds_cluster_hosted_zone_id"></a> [rds\_cluster\_hosted\_zone\_id](#output\_rds\_cluster\_hosted\_zone\_id) | n/a |
-| <a name="output_rds_cluster_identifier"></a> [rds\_cluster\_identifier](#output\_rds\_cluster\_identifier) | n/a |
-| <a name="output_rds_cluster_instance_endpoints"></a> [rds\_cluster\_instance\_endpoints](#output\_rds\_cluster\_instance\_endpoints) | n/a |
-| <a name="output_rds_cluster_instance_ids"></a> [rds\_cluster\_instance\_ids](#output\_rds\_cluster\_instance\_ids) | n/a |
-| <a name="output_rds_cluster_master_username"></a> [rds\_cluster\_master\_username](#output\_rds\_cluster\_master\_username) | n/a |
-| <a name="output_rds_cluster_port"></a> [rds\_cluster\_port](#output\_rds\_cluster\_port) | n/a |
-| <a name="output_rds_cluster_reader_endpoint"></a> [rds\_cluster\_reader\_endpoint](#output\_rds\_cluster\_reader\_endpoint) | n/a |
-| <a name="output_rds_global_cluster_id"></a> [rds\_global\_cluster\_id](#output\_rds\_global\_cluster\_id) | n/a |
-| <a name="output_rds_security_group_ids"></a> [rds\_security\_group\_ids](#output\_rds\_security\_group\_ids) | n/a |
+| <a name="output_rds_cluster_arn"></a> [rds\_cluster\_arn](#output\_rds\_cluster\_arn) | The ARN of the Aurora cluster |
+| <a name="output_rds_cluster_endpoint"></a> [rds\_cluster\_endpoint](#output\_rds\_cluster\_endpoint) | The writer endpoint of the Aurora cluster, without the port |
+| <a name="output_rds_cluster_hosted_zone_id"></a> [rds\_cluster\_hosted\_zone\_id](#output\_rds\_cluster\_hosted\_zone\_id) | The Route53 hosted zone ID of the Aurora cluster, to build alias records |
+| <a name="output_rds_cluster_identifier"></a> [rds\_cluster\_identifier](#output\_rds\_cluster\_identifier) | The identifier of the Aurora cluster |
+| <a name="output_rds_cluster_instance_endpoints"></a> [rds\_cluster\_instance\_endpoints](#output\_rds\_cluster\_instance\_endpoints) | The endpoints of the cluster instances, in replica index order |
+| <a name="output_rds_cluster_instance_ids"></a> [rds\_cluster\_instance\_ids](#output\_rds\_cluster\_instance\_ids) | The identifiers of the cluster instances, in replica index order |
+| <a name="output_rds_cluster_master_username"></a> [rds\_cluster\_master\_username](#output\_rds\_cluster\_master\_username) | The master username of the Aurora cluster, null when migrating from an existing RDS instance |
+| <a name="output_rds_cluster_port"></a> [rds\_cluster\_port](#output\_rds\_cluster\_port) | The port the Aurora cluster is listening on |
+| <a name="output_rds_cluster_reader_endpoint"></a> [rds\_cluster\_reader\_endpoint](#output\_rds\_cluster\_reader\_endpoint) | The read-only endpoint of the Aurora cluster, load balanced across the reader instances |
+| <a name="output_rds_global_cluster_id"></a> [rds\_global\_cluster\_id](#output\_rds\_global\_cluster\_id) | The ID of the Aurora global cluster, empty when settings.global\_cluster.create is false |
+| <a name="output_rds_security_group_ids"></a> [rds\_security\_group\_ids](#output\_rds\_security\_group\_ids) | The list of security group IDs attached to the cluster, created by the module or looked up from the existing security group |
 
 
 
