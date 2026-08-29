@@ -32,6 +32,11 @@
 #   password_secret_recovery_window: 30          # (Optional) Days Secrets Manager waits before deleting the module managed secret; default: unset (AWS
 #                                                #            default of 30). One of 0 or 7 through 30, where 0 deletes it immediately with no recovery.
 #                                                #            Only applies to the module managed secret, AWS owns the secret created when managed_password is true
+#   password_secret_import: false                # (Optional) Adopt an existing Secrets Manager secret of the same name instead of creating one; default: false.
+#                                                #            One-time switch, set it back to false once the state holds the secret. The plan fails when no
+#                                                #            such secret exists, so leave it false on a fresh deployment. Use it when a destroy left the
+#                                                #            secret inside its recovery window, which keeps the name taken and blocks re-creation.
+#                                                #            Only applies when managed_password is false
 #   password_secret_replica:                     # (Optional) Cross region replicas of the module managed secret; default: none. Accepts a single object
 #                                                #            or a list of them. Only applies when managed_password is false
 #     - region: "us-west-2"                      # (Required when replica defined) Region the secret is replicated to

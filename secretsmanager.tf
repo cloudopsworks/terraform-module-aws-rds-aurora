@@ -39,12 +39,21 @@ locals {
     }],
     []
   )
+
+  # A secret destroyed within its recovery window still occupies its name, and Secrets Manager
+  # rejects the re-creation. settings.password_secret_import adopts the existing secret instead,
+  # as a one-time switch the operator turns off once the state holds it: an import block fails the
+  # plan outright when the remote object does not exist, so it can never be left on by default
+  import_secret = local.create_secret && try(var.settings.password_secret_import, false)
 }
 
+# Imported by name rather than by a constructed ARN. Secrets Manager appends a random six character
+# suffix to every secret ARN, which the module cannot know, and AWS does not resolve a partial ARN
+# that lacks it. The name is accepted wherever a secret id is
 import {
-    for_each = local.create_secret ? [1] : []
-    to = aws_secretsmanager_secret.rds[each.key]
-    id = "arn:aws:secretsmanager:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:secret:${local.secret_name}"
+  for_each = local.import_secret ? toset(["0"]) : toset([])
+  to       = aws_secretsmanager_secret.rds[0]
+  id       = local.secret_name
 }
 
 # Secrets saving
