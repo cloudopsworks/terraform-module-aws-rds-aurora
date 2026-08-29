@@ -1,5 +1,5 @@
 ##
-# (c) 2021-2025
+# (c) 2021-2026
 #     Cloud Ops Works LLC - https://cloudops.works/
 #     Find us on:
 #       GitHub: https://github.com/cloudopsworks
@@ -8,23 +8,20 @@
 #
 
 resource "random_password" "randompass" {
-  count            = !try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) ? 1 : 0
+  count = local.generate_password ? 1 : 0
+  keepers = {
+    rotation_rfc3339 = time_rotating.randompass[0].rotation_rfc3339
+  }
   length           = 20
   special          = false
-  override_special = "=_-"
+  override_special = "=_-@"
   min_upper        = 2
   min_special      = 1
   min_numeric      = 2
   min_lower        = 1
-
-  lifecycle {
-    replace_triggered_by = [
-      time_rotating.randompass[0].rotation_rfc3339
-    ]
-  }
 }
 
 resource "time_rotating" "randompass" {
-  count         = !try(var.settings.managed_password, false) && !try(var.settings.migration.enabled, false) ? 1 : 0
+  count         = local.generate_password ? 1 : 0
   rotation_days = try(var.settings.password_rotation_period, 90)
 }
