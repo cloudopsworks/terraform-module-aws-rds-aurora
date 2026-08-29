@@ -41,6 +41,12 @@ locals {
   )
 }
 
+import {
+    for_each = local.create_secret ? [1] : []
+    to = aws_secretsmanager_secret.rds[each.key]
+    id = "arn:aws:secretsmanager:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:secret:${local.secret_name}"
+}
+
 # Secrets saving
 resource "aws_secretsmanager_secret" "rds" {
   count       = local.create_secret ? 1 : 0
