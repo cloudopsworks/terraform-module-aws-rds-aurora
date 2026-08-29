@@ -31,7 +31,9 @@
 #                                                #            or module managed; default: "" (aws/secretsmanager)
 #   password_secret_recovery_window: 30          # (Optional) Days Secrets Manager waits before deleting the module managed secret; default: unset (AWS
 #                                                #            default of 30). One of 0 or 7 through 30, where 0 deletes it immediately with no recovery.
-#                                                #            Only applies to the module managed secret, AWS owns the secret created when managed_password is true
+#                                                #            Consumed only at destroy time, so changing it alters nothing on the live secret.
+#                                                #            Silently has no effect wherever the module managed secret is not created, which is whenever
+#                                                #            managed_password, migration.enabled or recovery.enabled is true, or database_name is null
 #   password_secret_import: false                # (Optional) Adopt an existing Secrets Manager secret of the same name instead of creating one; default: false.
 #                                                #            One-time switch, set it back to false once the state holds the secret. The plan fails when no
 #                                                #            such secret exists, so leave it false on a fresh deployment. Use it when a destroy left the

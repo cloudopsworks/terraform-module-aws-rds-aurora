@@ -121,8 +121,13 @@
 #   password_secret_kms_key_id: "arn:aws:kms:..." # (Optional) KMS key ID or alias for the password secret, applied whenever managed_password is true,
 #                                                  #            and to the module managed secret otherwise; default: null (aws/secretsmanager)
 #   password_secret_recovery_window: 30            # (Optional) Days Secrets Manager waits before deleting the module managed secret; default: null (AWS default of 30).
-#                                                  #            One of 0 or 7 through 30; 0 deletes it immediately with no recovery. Only applies to the module
-#                                                  #            managed secret, AWS owns the lifecycle of the secret created when managed_password is true
+#                                                  #            One of 0 or 7 through 30; 0 deletes it immediately with no recovery. Consumed only by the
+#                                                  #            DeleteSecret call at destroy time: neither CreateSecret nor UpdateSecret carries a recovery
+#                                                  #            window, so changing it plans a state only diff and alters nothing on the live secret.
+#                                                  #            Silently has no effect wherever the module managed secret is not created, which is whenever
+#                                                  #            managed_password, migration.enabled or recovery.enabled is true, or database_name is null.
+#                                                  #            The secret created for managed_password is owned by RDS through master_user_secret, and
+#                                                  #            aws_rds_cluster exposes no recovery window for it
 #   password_secret_import: true | false           # (Optional) Adopt an existing Secrets Manager secret of the same name instead of creating one; default: false.
 #                                                  #            One-time switch, turn it off once the state holds the secret. The plan fails when no such secret
 #                                                  #            exists, so it must stay false on a fresh deployment. Use it when a destroy left the secret inside
