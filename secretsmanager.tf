@@ -22,6 +22,23 @@ locals {
   # argument and collapse the path segment, yielding a name with an empty component
   secret_name        = local.db_name != null ? format("%s/%s/%s/%s/master-rds-credentials", local.secret_store_path, var.settings.engine_type, aws_rds_cluster.this.cluster_identifier, local.db_name) : null
   secret_description = local.db_name != null ? format("RDS Master credentials - %s - %s - %s - %s", local.master_user, var.settings.engine_type, aws_rds_cluster.this.cluster_identifier, local.db_name) : null
+
+  # settings.password_secret_replica accepts either a single replica object or a list of them. try()
+  # returns the first expression that evaluates without error: the attribute access of the first
+  # branch fails on a list, so a list input falls through to the second branch. Each replica carries
+  # its own kms_key_id because a Secrets Manager replica can only be encrypted with a key that lives
+  # in the replica region, never with password_secret_kms_key_id, which belongs to the primary region
+  secret_replicas = try(
+    [{
+      region     = var.settings.password_secret_replica.region
+      kms_key_id = try(var.settings.password_secret_replica.kms_key_id, null)
+    }],
+    [for replica in var.settings.password_secret_replica : {
+      region     = replica.region
+      kms_key_id = try(replica.kms_key_id, null)
+    }],
+    []
+  )
 }
 
 # Secrets saving
@@ -30,7 +47,16 @@ resource "aws_secretsmanager_secret" "rds" {
   name        = local.secret_name
   description = local.secret_description
   kms_key_id  = try(var.settings.password_secret_kms_key_id, null)
-  tags        = local.all_tags
+  # null keeps the AWS default of a 30 day recovery window
+  recovery_window_in_days = try(var.settings.password_secret_recovery_window, null)
+  dynamic "replica" {
+    for_each = local.secret_replicas
+    content {
+      region     = replica.value.region
+      kms_key_id = replica.value.kms_key_id
+    }
+  }
+  tags = local.all_tags
 }
 
 resource "aws_secretsmanager_secret_version" "rds" {

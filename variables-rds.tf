@@ -120,6 +120,14 @@
 #   managed_password_rotation: true | false        # (Optional) Enable rotation for the AWS managed secret; default: false. Only applies when managed_password is true
 #   password_secret_kms_key_id: "arn:aws:kms:..." # (Optional) KMS key ID or alias for the password secret, applied whenever managed_password is true,
 #                                                  #            and to the module managed secret otherwise; default: null (aws/secretsmanager)
+#   password_secret_recovery_window: 30            # (Optional) Days Secrets Manager waits before deleting the module managed secret; default: null (AWS default of 30).
+#                                                  #            One of 0 or 7 through 30; 0 deletes it immediately with no recovery. Only applies to the module
+#                                                  #            managed secret, AWS owns the lifecycle of the secret created when managed_password is true
+#   password_secret_replica:                       # (Optional) Cross region replicas of the module managed secret; default: none. Accepts a single object or a
+#                                                  #            list of them. Only applies when managed_password is false
+#     - region: "us-west-2"                       # (Required when replica defined) Region the secret is replicated to
+#       kms_key_id: "arn:aws:kms:..."             # (Optional) KMS key of the replica region used to encrypt the replica; default: null (aws/secretsmanager).
+#                                                  #            Must live in the replica region, password_secret_kms_key_id is never reused here
 #   rotation_lambda_name: "rds-rotation-lambda"   # (Optional) Name of an existing Lambda used to rotate the module managed secret; only applies when managed_password is false
 #   password_rotation_period: 90                   # (Optional) Rotation period in days; default: 90. Drives the Secrets Manager rotation when managed_password_rotation
 #                                                  #            is true, and the regeneration cadence of the module generated password otherwise
