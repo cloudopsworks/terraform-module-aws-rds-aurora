@@ -7,6 +7,12 @@
 #     Distributed Under Apache v2.0 License
 #
 
+import {
+  for_each = toset(try(var.settings.cloudwatch.import, false) ? local.cw_logs : [])
+  id       = each.value
+  to       = aws_cloudwatch_log_group.this[each.key]
+}
+
 resource "aws_cloudwatch_log_group" "this" {
   for_each          = toset(local.cw_logs)
   name              = each.value
