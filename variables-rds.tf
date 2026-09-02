@@ -11,9 +11,43 @@
 # settings:                                      # (Required) Root map for Aurora configuration
 #   # Recovery
 #   recovery:                                    # (Optional) Restore cluster from snapshot or another cluster; conflicts with creating a fresh cluster
+#                                                #            Mutually exclusive with clone and s3_import
 #     enabled: true | false                      # (Optional) Enable recovery mode; default: false
 #     cluster_identifier: "rds-cluster-name"     # (Optional) Source cluster identifier when recovering from another cluster
 #     snapshot_identifier: "cluster-snap-name"   # (Optional) Specific cluster snapshot identifier to restore from
+#   # Clone / Point in time restore
+#   clone:                                       # (Optional) Build the cluster by restoring an existing one to a point in time, mapped to the
+#                                                #            aws_rds_cluster restore_to_point_in_time block. Mutually exclusive with recovery and
+#                                                #            s3_import: the provider rejects the plan when more than one of the three is enabled
+#     enabled: true | false                      # (Optional) Enable the point in time restore; default: false
+#     source_cluster_identifier: "src-cluster"   # (Optional) Identifier of the source cluster, or its full ARN to clone from another account.
+#                                                #            Either this or source_cluster_resource_id is required when enabled
+#     source_cluster_resource_id: "cluster-ABCD" # (Optional) DbClusterResourceId of the source cluster; the only way to restore a cluster that
+#                                                #            has already been deleted
+#     restore_type: "copy-on-write"              # (Optional) One of: "copy-on-write" (clone sharing the source storage, same account and region
+#                                                #            only) or "full-copy" (independent copy); default: "copy-on-write"
+#     use_latest_restorable_time: true | false   # (Optional) Restore to the latest restorable time; default: unset. Conflicts with restore_to_time
+#     restore_to_time: "2024-12-01T16:00:00Z"    # (Optional) UTC RFC3339 timestamp to restore to; default: unset. Conflicts with
+#                                                #            use_latest_restorable_time
+#                                                #            A point in time restore ignores database_name and master_username: AWS carries both over from
+#                                                #            the source cluster, and both are force new. Set settings.database_name and
+#                                                #            settings.master_username to the values the source cluster actually uses, otherwise every plan
+#                                                #            after the first apply proposes replacing the restored cluster. The master password is not
+#                                                #            carried over — the provider applies the module generated one right after the restore, so the
+#                                                #            module managed secret stays accurate
+#   # S3 import
+#   s3_import:                                   # (Optional) Seed a new cluster from a database backup stored on S3, mapped to the aws_rds_cluster
+#                                                #            s3_import block. Supported by aurora-mysql only, and mutually exclusive with recovery and clone
+#     enabled: true | false                      # (Optional) Enable the S3 import; default: false
+#     source_engine: "mysql"                     # (Required when enabled) Engine that produced the backup; AWS accepts "mysql" only
+#     source_engine_version: "5.7.28"            # (Required when enabled) Full version of the engine that produced the backup
+#     ingestion_role: "arn:aws:iam::...:role/x"  # (Required when enabled) ARN of the IAM role RDS assumes to read the backup from the bucket
+#     bucket_name: "my-backup-bucket"            # (Required when enabled) Bucket holding the backup; must live in the cluster region
+#     bucket_prefix: "backups/mydb"              # (Optional) Key prefix of the backup inside the bucket; default: null (bucket root)
+#   # Cross region source
+#   source_region: "us-east-1"                   # (Optional) Region the replication or restore source lives in; default: null. Required by AWS to
+#                                                #            presign the cross region request when that source is encrypted and sits in another region, as
+#                                                #            with a cross region migration or clone. Forces replacement when changed
 #   # Global Cluster
 #   global_cluster:                              # (Optional) Manage Aurora Global Database
 #     create: true | false                       # (Optional) Create a new Global Cluster; default: false
@@ -23,7 +57,9 @@
 #   name_prefix: "mydb"                          # (Required) When `name` not provided; used to build cluster/instances names
 #   database_name: "mydb"                        # (Optional) Initial DB name; default: "cluster_db". Forced to null by the module when migration.enabled=true.
 #                                                #            Set explicitly to null to skip the initial database, which also disables the module managed Secrets Manager entry
+#                                                #            When clone.enabled=true it must be set to the database name the source cluster carries, see clone above
 #   master_username: "admin"                     # (Optional) Master user name; default: "cluster_root". Forced to null by the module when migration.enabled=true
+#                                                #            When clone.enabled=true it must be set to the master user the source cluster carries, see clone above
 #   engine_type: "aurora-postgresql"            # (Required) One of: "aurora-postgresql", "aurora-mysql"
 #   engine_version: "15.3"                       # (Required) Aurora engine version (e.g., Postgres 15.x, MySQL 8.0.x supported by AWS)
 #   engine_mode: "provisioned" | "serverless"    # (Optional) Engine mode; for Serverless v2 this is kept as "provisioned" by AWS

@@ -17,7 +17,8 @@
 
 Production-ready Terraform module to provision Amazon Aurora (MySQL or PostgreSQL) clusters on AWS.
 Supports provisioned and Serverless v2 engine modes, multi-AZ read replicas, encryption with KMS,
-snapshot-based recovery, and optional managed/rotated master password via AWS Secrets Manager.
+snapshot-based recovery, point-in-time cloning, seeding from an S3 backup, and optional
+managed/rotated master password via AWS Secrets Manager.
 Designed for first-class use with Terragrunt and compatible with common Gruntwork-style boilerplates.
 
 
@@ -50,8 +51,8 @@ We have [*lots of terraform modules*][terraform_modules] that are Open Source an
 
 This module abstracts the complexity of building secure and scalable Amazon Aurora clusters. It
 exposes a compact input model (settings, vpc, security_groups) with sensible defaults while remaining
-flexible enough for advanced scenarios like global clusters, serverless scaling, snapshot recovery, and
-password rotation. It is cloud-native, tag-aware, and non-intrusive: you can bring your own networking
+flexible enough for advanced scenarios like global clusters, serverless scaling, snapshot recovery,
+point-in-time cloning, S3 seeded clusters, cross region sources, and password rotation. It is cloud-native, tag-aware, and non-intrusive: you can bring your own networking
 and security groups or let the module help with sane defaults.
 
 Integration with Terragrunt is straightforward. If you work with Gruntwork-style scaffolding or any
@@ -78,6 +79,11 @@ reference and a complete set of Terragrunt examples to get you up and running qu
 | CloudWatch and Performance Insights keys | Each takes its own key settings, `settings.cloudwatch.kms_key_id` / `kms_key_alias` and `settings.performance.encryption.*`. When none is set the CloudWatch log groups fall back to the module managed key only, never to an operator supplied encryption key, and to AWS default encryption when the module owns no key. CloudWatch Logs can only use a key whose policy grants it, and the module can guarantee that on its own key alone. An AWS managed key such as `aws/rds` carries no such grant and its policy cannot be edited, so reusing it for logs fails at apply |
 | Module managed key policy | The storage key created by the module grants `kms:*` to the account root, RDS access through `kms:ViaService` scoped to `rds.<region>.amazonaws.com` and the calling account, and `logs.<region>.amazonaws.com` scoped by encryption context to `/aws/rds/cluster/<identifier>/*`. The Performance Insights key carries its own policy with the root and RDS statements; Performance Insights creates its own grants through the RDS statement |
 | Initial database | `settings.database_name` set explicitly to `null` skips the initial database and disables the module managed Secrets Manager secret |
+| Seeding a cluster | Three settings build the cluster from existing data instead of creating it empty: `settings.recovery` restores a snapshot, `settings.clone` restores an existing cluster to a point in time, and `settings.s3_import` seeds it from a backup on S3. They map to `snapshot_identifier`, `restore_to_point_in_time` and `s3_import`, which the AWS provider declares as mutually exclusive — enabling more than one fails the plan |
+| Point in time clone | `settings.clone.enabled` restores from `source_cluster_identifier` (an identifier, or a full ARN to clone across accounts) or from `source_cluster_resource_id`, which is the only way to reach an already deleted cluster. `restore_type` defaults to `copy-on-write`, a clone sharing the storage of the source and therefore limited to the same account and region; `full-copy` makes an independent copy. Pick the target instant with either `use_latest_restorable_time` or `restore_to_time`, never both |
+| Clone and the initial database | A point in time restore ignores `database_name` and `master_username`: AWS carries both over from the source cluster and both are force new on `aws_rds_cluster`. Leaving them at the module defaults of `cluster_db` / `cluster_root` therefore makes every plan after the first apply propose replacing the restored cluster, so set them to the values the source actually uses. The master password is not carried over — the provider applies the module generated one in a follow-up `ModifyDBCluster`, so the module managed secret stays accurate for a clone |
+| S3 import | `settings.s3_import.enabled` seeds a new cluster from a database backup on S3 and is supported by `aurora-mysql` only. `source_engine` (AWS accepts `mysql`), `source_engine_version`, `ingestion_role`, and `bucket_name` are all required when it is enabled and are read without a default, so a missing one fails the plan rather than reaching AWS. The bucket must live in the cluster region and the role is the one RDS assumes to read it |
+| Cross region source | `settings.source_region` names the region a replication or restore source lives in. AWS needs it to presign the cross region request when that source is encrypted and sits in another region, as with a cross region `migration` or `clone`. It is force new, so changing it replaces the cluster |
 
 ### Upgrade notes
 
@@ -241,9 +247,43 @@ Full variables documentation (YAML with inline comments), generated from `variab
 # settings:                                      # (Required) Root map for Aurora configuration
 #   # Recovery
 #   recovery:                                    # (Optional) Restore cluster from snapshot or another cluster; conflicts with creating a fresh cluster
+#                                                #            Mutually exclusive with clone and s3_import
 #     enabled: true | false                      # (Optional) Enable recovery mode; default: false
 #     cluster_identifier: "rds-cluster-name"     # (Optional) Source cluster identifier when recovering from another cluster
 #     snapshot_identifier: "cluster-snap-name"   # (Optional) Specific cluster snapshot identifier to restore from
+#   # Clone / Point in time restore
+#   clone:                                       # (Optional) Build the cluster by restoring an existing one to a point in time, mapped to the
+#                                                #            aws_rds_cluster restore_to_point_in_time block. Mutually exclusive with recovery and
+#                                                #            s3_import: the provider rejects the plan when more than one of the three is enabled
+#     enabled: true | false                      # (Optional) Enable the point in time restore; default: false
+#     source_cluster_identifier: "src-cluster"   # (Optional) Identifier of the source cluster, or its full ARN to clone from another account.
+#                                                #            Either this or source_cluster_resource_id is required when enabled
+#     source_cluster_resource_id: "cluster-ABCD" # (Optional) DbClusterResourceId of the source cluster; the only way to restore a cluster that
+#                                                #            has already been deleted
+#     restore_type: "copy-on-write"              # (Optional) One of: "copy-on-write" (clone sharing the source storage, same account and region
+#                                                #            only) or "full-copy" (independent copy); default: "copy-on-write"
+#     use_latest_restorable_time: true | false   # (Optional) Restore to the latest restorable time; default: unset. Conflicts with restore_to_time
+#     restore_to_time: "2024-12-01T16:00:00Z"    # (Optional) UTC RFC3339 timestamp to restore to; default: unset. Conflicts with
+#                                                #            use_latest_restorable_time
+#                                                #            A point in time restore ignores database_name and master_username: AWS carries both over from
+#                                                #            the source cluster, and both are force new. Set settings.database_name and
+#                                                #            settings.master_username to the values the source cluster actually uses, otherwise every plan
+#                                                #            after the first apply proposes replacing the restored cluster. The master password is not
+#                                                #            carried over — the provider applies the module generated one right after the restore, so the
+#                                                #            module managed secret stays accurate
+#   # S3 import
+#   s3_import:                                   # (Optional) Seed a new cluster from a database backup stored on S3, mapped to the aws_rds_cluster
+#                                                #            s3_import block. Supported by aurora-mysql only, and mutually exclusive with recovery and clone
+#     enabled: true | false                      # (Optional) Enable the S3 import; default: false
+#     source_engine: "mysql"                     # (Required when enabled) Engine that produced the backup; AWS accepts "mysql" only
+#     source_engine_version: "5.7.28"            # (Required when enabled) Full version of the engine that produced the backup
+#     ingestion_role: "arn:aws:iam::...:role/x"  # (Required when enabled) ARN of the IAM role RDS assumes to read the backup from the bucket
+#     bucket_name: "my-backup-bucket"            # (Required when enabled) Bucket holding the backup; must live in the cluster region
+#     bucket_prefix: "backups/mydb"              # (Optional) Key prefix of the backup inside the bucket; default: null (bucket root)
+#   # Cross region source
+#   source_region: "us-east-1"                   # (Optional) Region the replication or restore source lives in; default: null. Required by AWS to
+#                                                #            presign the cross region request when that source is encrypted and sits in another region, as
+#                                                #            with a cross region migration or clone. Forces replacement when changed
 #   # Global Cluster
 #   global_cluster:                              # (Optional) Manage Aurora Global Database
 #     create: true | false                       # (Optional) Create a new Global Cluster; default: false
@@ -253,7 +293,9 @@ Full variables documentation (YAML with inline comments), generated from `variab
 #   name_prefix: "mydb"                          # (Required) When `name` not provided; used to build cluster/instances names
 #   database_name: "mydb"                        # (Optional) Initial DB name; default: "cluster_db". Forced to null by the module when migration.enabled=true.
 #                                                #            Set explicitly to null to skip the initial database, which also disables the module managed Secrets Manager entry
+#                                                #            When clone.enabled=true it must be set to the database name the source cluster carries, see clone above
 #   master_username: "admin"                     # (Optional) Master user name; default: "cluster_root". Forced to null by the module when migration.enabled=true
+#                                                #            When clone.enabled=true it must be set to the master user the source cluster carries, see clone above
 #   engine_type: "aurora-postgresql"            # (Required) One of: "aurora-postgresql", "aurora-mysql"
 #   engine_version: "15.3"                       # (Required) Aurora engine version (e.g., Postgres 15.x, MySQL 8.0.x supported by AWS)
 #   engine_mode: "provisioned" | "serverless"    # (Optional) Engine mode; for Serverless v2 this is kept as "provisioned" by AWS
@@ -351,8 +393,13 @@ Full variables documentation (YAML with inline comments), generated from `variab
 #   password_secret_kms_key_id: "arn:aws:kms:..." # (Optional) KMS key ID or alias for the password secret, applied whenever managed_password is true,
 #                                                  #            and to the module managed secret otherwise; default: null (aws/secretsmanager)
 #   password_secret_recovery_window: 30            # (Optional) Days Secrets Manager waits before deleting the module managed secret; default: null (AWS default of 30).
-#                                                  #            One of 0 or 7 through 30; 0 deletes it immediately with no recovery. Only applies to the module
-#                                                  #            managed secret, AWS owns the lifecycle of the secret created when managed_password is true
+#                                                  #            One of 0 or 7 through 30; 0 deletes it immediately with no recovery. Consumed only by the
+#                                                  #            DeleteSecret call at destroy time: neither CreateSecret nor UpdateSecret carries a recovery
+#                                                  #            window, so changing it plans a state only diff and alters nothing on the live secret.
+#                                                  #            Silently has no effect wherever the module managed secret is not created, which is whenever
+#                                                  #            managed_password, migration.enabled or recovery.enabled is true, or database_name is null.
+#                                                  #            The secret created for managed_password is owned by RDS through master_user_secret, and
+#                                                  #            aws_rds_cluster exposes no recovery window for it
 #   password_secret_import: true | false           # (Optional) Adopt an existing Secrets Manager secret of the same name instead of creating one; default: false.
 #                                                  #            One-time switch, turn it off once the state holds the secret. The plan fails when no such secret
 #                                                  #            exists, so it must stay false on a fresh deployment. Use it when a destroy left the secret inside
@@ -426,26 +473,6 @@ Full variables documentation (YAML with inline comments), generated from `variab
 #       type: "READER" | "WRITER" | "ANY"        # (Required) Endpoint type
 #       static_members: ["rds-instance-1"]         # (Optional) Static members to include
 #       excluded_members: ["rds-instance-3"]       # (Optional) Members to exclude
-
-# vpc:                                           # (Required) Networking settings for the cluster
-#   vpc_id: "vpc-12345678901234"                # (Required) Target VPC id
-#   subnet_group: "db-subnet-group-name"        # (Required) Existing DB subnet group name covering private subnets
-#   subnet_ids:                                  # (Optional) Subnet ids (used only in some auxiliary lookups); prefer using subnet_group
-#     - "subnet-abcdef123456789"
-#     - "subnet-abcdef123456781"
-#     - "subnet-abcdef123456782"
-
-# security_groups:                               # (Required) Ingress configuration for database port
-#   create: true | false                         # (Optional) If true, create SG; else use existing by name; default: false
-#   name: "sg-rds"                               # (Required when create=false) Existing SG name to attach
-#   group_ids:                                   # (Optional) Extra security group ids to allow ingress from
-#     - "sg-0123456789abcdef0"
-#   allow_cidrs:                                 # (Optional) CIDR blocks allowed to connect to port
-#     - "1.2.3.4/32"
-#     - "10.0.0.0/16"
-#   allow_security_groups:                       # (Optional) Security group NAMES to allow ingress from (resolved in the same VPC)
-#     - "sg-name-123456"
-#     - "sg-name-abcdef"
 ```
 
 ## Quick Start
@@ -650,6 +677,94 @@ inputs = {
   }
   vpc = { vpc_id = "vpc-xxxx", subnet_group = "dr-subnet-group", subnet_ids = ["subnet-a", "subnet-b"] }
   security_groups = { create = false, name = "sg-dr" }
+}
+```
+
+8) Clone an existing cluster to a point in time
+
+`clone` maps to `restore_to_point_in_time` and cannot be combined with `recovery` or `s3_import`.
+`database_name` and `master_username` are not applied by the restore, so they are set here to the
+values the source cluster already carries; leaving them at the module defaults would make every
+later plan propose replacing the cluster.
+
+```hcl
+terraform { source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z" }
+
+inputs = {
+  settings = {
+    name_prefix     = "clone"
+    engine_type     = "aurora-postgresql"
+    engine_version  = "15.3"
+    instance_size   = "db.r6g.large"
+    database_name   = "appdb"        # must match the source cluster
+    master_username = "appadmin"     # must match the source cluster
+    clone = {
+      enabled                   = true
+      source_cluster_identifier = "rds-prod-cluster" # full ARN to clone from another account
+      restore_type              = "copy-on-write"    # or "full-copy" for an independent copy
+      restore_to_time           = "2026-08-30T16:00:00Z"
+      # use_latest_restorable_time = true            # alternative to restore_to_time
+    }
+    availability_zones = ["us-east-1a", "us-east-1b"]
+  }
+  vpc = { vpc_id = "vpc-xxxx", subnet_group = "clone-subnet-group", subnet_ids = ["subnet-a", "subnet-b"] }
+  security_groups = { create = false, name = "sg-clone" }
+}
+```
+
+9) Seed an Aurora MySQL cluster from a backup on S3
+
+`s3_import` is supported by `aurora-mysql` only. Every key except `bucket_prefix` is required once
+it is enabled, and the bucket must live in the cluster region.
+
+```hcl
+terraform { source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z" }
+
+inputs = {
+  settings = {
+    name_prefix    = "seeded"
+    engine_type    = "aurora-mysql"
+    engine_version = "8.0.mysql_aurora.3.06.0"
+    instance_size  = "db.r6g.large"
+    port           = 3306
+    s3_import = {
+      enabled               = true
+      source_engine         = "mysql"
+      source_engine_version = "5.7.28"
+      ingestion_role        = "arn:aws:iam::123456789012:role/rds-s3-import"
+      bucket_name           = "acme-db-backups"
+      bucket_prefix         = "mysql/seeded"
+    }
+    availability_zones = ["us-east-1a", "us-east-1b"]
+  }
+  vpc = { vpc_id = "vpc-xxxx", subnet_group = "seeded-subnet-group", subnet_ids = ["subnet-a", "subnet-b"] }
+  security_groups = { create = false, name = "sg-seeded" }
+}
+```
+
+10) Migrate from an RDS instance living in another region
+
+`source_region` is what lets AWS presign the cross region request when the replication source is
+encrypted and sits outside the cluster region. It is force new, so changing it replaces the cluster.
+
+```hcl
+terraform { source = "git::https://github.com/cloudopsworks/terraform-module-aws-rds-aurora.git?ref=vX.Y.Z" }
+
+inputs = {
+  settings = {
+    name_prefix    = "xregion"
+    engine_type    = "aurora-postgresql"
+    engine_version = "15.3"
+    instance_size  = "db.r6g.large"
+    source_region  = "us-east-1"
+    migration = {
+      enabled             = true
+      source_rds_instance = "rds-legacy-instance"
+    }
+    availability_zones = ["us-west-2a", "us-west-2b"]
+  }
+  vpc = { vpc_id = "vpc-xxxx", subnet_group = "xregion-subnet-group", subnet_ids = ["subnet-a", "subnet-b"] }
+  security_groups = { create = false, name = "sg-xregion" }
 }
 ```
 

@@ -7,7 +7,9 @@
 #   name: "mydb-name"                            # (Optional) Explicit cluster identifier; overrides name_prefix when set
 #   database_name: "mydb"                        # (Optional) Initial DB name; default: "cluster_db".
 #                                                #            Set explicitly to null to skip the initial database, which also disables the module managed secret
+#                                                #            When clone.enabled=true set it to the database name the source cluster carries, see clone below
 #   master_username: "admin"                     # (Optional) Master user; default: "cluster_root". Forced to null when migration.enabled=true
+#                                                #            When clone.enabled=true set it to the master user the source cluster carries, see clone below
 #   engine_type: "aurora-postgresql"             # (Required) One of: "aurora-postgresql", "aurora-mysql"
 #   engine_version: "15.3"                       # (Required) Aurora engine version supported by AWS
 #   engine_mode: "provisioned"                   # (Optional) "provisioned" | "serverless"; default: "provisioned"
@@ -47,10 +49,36 @@
 #   rotation_lambda_name: ""                     # (Optional) External rotation Lambda name; only applies when managed_password is false
 #   password_rotation_period: 90                 # (Optional) Rotation period in days; default: 90. Also the regeneration cadence of the module generated password
 #   rotation_duration: "1h"                      # (Optional) Rotation Lambda duration; default: "1h"
-#   recovery:                                    # (Optional) Restore cluster from snapshot or another cluster
+#   recovery:                                    # (Optional) Restore cluster from snapshot or another cluster; mutually exclusive with clone and s3_import
 #     enabled: false                             # (Optional) Enable recovery mode; default: false
 #     cluster_identifier: ""                     # (Optional) Source cluster identifier
 #     snapshot_identifier: ""                    # (Optional) Specific snapshot identifier
+#   clone:                                       # (Optional) Build the cluster by restoring an existing one to a point in time (restore_to_point_in_time).
+#                                                #            Mutually exclusive with recovery and s3_import
+#     enabled: false                             # (Optional) Enable the point in time restore; default: false
+#     source_cluster_identifier: ""              # (Optional) Identifier of the source cluster, or its full ARN to clone from another account.
+#                                                #            Either this or source_cluster_resource_id is required when enabled
+#     source_cluster_resource_id: ""             # (Optional) DbClusterResourceId of the source cluster; the only way to restore a deleted cluster
+#     restore_type: "copy-on-write"              # (Optional) "copy-on-write" (clone sharing the source storage, same account and region only) |
+#                                                #            "full-copy" (independent copy); default: "copy-on-write"
+#     use_latest_restorable_time: true           # (Optional) Restore to the latest restorable time; default: unset. Conflicts with restore_to_time
+#     restore_to_time: ""                        # (Optional) UTC RFC3339 timestamp to restore to, e.g. "2024-12-01T16:00:00Z"; default: unset.
+#                                                #            Conflicts with use_latest_restorable_time.
+#                                                #            A point in time restore ignores database_name and master_username — AWS carries both over from
+#                                                #            the source cluster and both are force new, so set settings.database_name and
+#                                                #            settings.master_username to the values the source cluster uses, otherwise every plan after the
+#                                                #            first apply proposes replacing the restored cluster
+#   s3_import:                                   # (Optional) Seed a new cluster from a database backup stored on S3 (s3_import). aurora-mysql only,
+#                                                #            and mutually exclusive with recovery and clone
+#     enabled: false                             # (Optional) Enable the S3 import; default: false
+#     source_engine: "mysql"                     # (Required when enabled) Engine that produced the backup; AWS accepts "mysql" only
+#     source_engine_version: "5.7.28"            # (Required when enabled) Full version of the engine that produced the backup
+#     ingestion_role: ""                         # (Required when enabled) ARN of the IAM role RDS assumes to read the backup from the bucket
+#     bucket_name: ""                            # (Required when enabled) Bucket holding the backup; must live in the cluster region
+#     bucket_prefix: ""                          # (Optional) Key prefix of the backup inside the bucket; default: "" (bucket root)
+#   source_region: ""                            # (Optional) Region the replication or restore source lives in; default: "". Required by AWS to presign
+#                                                #            the cross region request when that source is encrypted and sits in another region, as with a cross
+#                                                #            region migration or clone. Forces replacement when changed
 #   global_cluster:                              # (Optional) Manage Aurora Global Database
 #     create: false                              # (Optional) Create a new Global Cluster; default: false
 #     id: ""                                     # (Optional) Existing Global Cluster ARN/ID to join
