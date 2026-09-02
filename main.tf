@@ -102,6 +102,7 @@ resource "aws_rds_cluster" "this" {
   performance_insights_kms_key_id       = local.perf_kms_key_arn
   performance_insights_retention_period = local.perf_enabled ? try(var.settings.performance_insights.retention_period, var.settings.performance.retention_period, 7) : null
   database_insights_mode                = try(var.settings.insights_mode, "standard")
+  source_region                         = try(var.settings.source_region, null) # Specify a source region to restore / replica from different region
   engine_mode = try(var.settings.serverless.enabled, false) ? (
     try(var.settings.serverless.v2, false) ? "provisioned" : "serverless"
   ) : try(var.settings.engine_mode, null)
@@ -121,6 +122,26 @@ resource "aws_rds_cluster" "this" {
       max_capacity             = try(var.settings.serverless.scaling_configuration.max_capacity, null)
       min_capacity             = try(var.settings.serverless.scaling_configuration.min_capacity, null)
       seconds_until_auto_pause = try(var.settings.serverless.scaling_configuration.seconds_until_auto_pause, null)
+    }
+  }
+  dynamic "restore_to_point_in_time" {
+    for_each = try(var.settings.clone.enabled, false) ? [1] : []
+    content {
+      source_cluster_identifier  = try(var.settings.clone.source_cluster_identifier, null)  # Specify ARN to restore from a different account
+      source_cluster_resource_id = try(var.settings.clone.source_cluster_resource_id, null) # To restore Deleted Cluster
+      restore_type               = try(var.settings.clone.restore_type, "copy-on-write")    # copy-on-write | full-copy
+      use_latest_restorable_time = try(var.settings.clone.use_latest_restorable_time, null) # true | false | not set
+      restore_to_time            = try(var.settings.clone.restore_to_time, null)            # Specify a timestamp to restore to a specific point in time
+    }
+  }
+  dynamic "s3_import" {
+    for_each = try(var.settings.s3_import.enabled, false) ? [1] : []
+    content {
+      source_engine         = var.settings.s3_import.source_engine
+      source_engine_version = var.settings.s3_import.source_engine_version
+      ingestion_role        = var.settings.s3_import.ingestion_role
+      bucket_name           = var.settings.s3_import.bucket_name
+      bucket_prefix         = try(var.settings.s3_import.bucket_prefix, null)
     }
   }
   lifecycle {
