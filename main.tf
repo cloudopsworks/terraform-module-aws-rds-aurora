@@ -24,9 +24,10 @@ locals {
   # not be handed a master password of its own
   manage_master_password = local.managed_password && !local.migration_enabled
   # The module generates and stores the master password only for fresh clusters that do not delegate
-  # the secret to AWS. A snapshot restore carries the master password of the snapshot, and a
-  # migration cluster carries that of its replication source, so generating one in either case would
-  # store a secret that does not match the database.
+  # the secret to AWS. A snapshot restore carries the master password of the snapshot, a point in
+  # time clone that of the cluster it was restored from, and a migration cluster that of its
+  # replication source, so generating one in any of those cases would store a secret that does not
+  # match the database.
   generate_password = !local.managed_password && !local.migration_enabled && !local.recovery_enabled && !local.clone_enabled
   # settings.database_name may be passed explicitly as null to skip the initial database, which is
   # also what migration requires. try() only substitutes on error, not on null, so local.db_name is

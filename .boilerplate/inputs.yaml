@@ -27,7 +27,7 @@
 #   managed_password: false                      # (Optional) Delegate the master password to AWS Secrets Manager; default: false.
 #                                                #            When false the module generates it and stores it on its own secret, handing it to the
 #                                                #            cluster through write-only arguments so it never lands in state. No password is
-#                                                #            generated when migration.enabled or recovery.enabled is true
+#                                                #            generated when migration.enabled, recovery.enabled or clone.enabled is true
 #   managed_password_rotation: false             # (Optional) Enable rotation of the AWS managed secret; default: false. Only applies when managed_password is true
 #   password_secret_kms_key_id: ""               # (Optional) KMS key ID or alias for the password secret, applied whether the secret is AWS managed
 #                                                #            or module managed; default: "" (aws/secretsmanager)
@@ -35,7 +35,7 @@
 #                                                #            default of 30). One of 0 or 7 through 30, where 0 deletes it immediately with no recovery.
 #                                                #            Consumed only at destroy time, so changing it alters nothing on the live secret.
 #                                                #            Silently has no effect wherever the module managed secret is not created, which is whenever
-#                                                #            managed_password, migration.enabled or recovery.enabled is true, or database_name is null
+#                                                #            managed_password, migration.enabled, recovery.enabled or clone.enabled is true, or database_name is null
 #   password_secret_import: false                # (Optional) Adopt an existing Secrets Manager secret of the same name instead of creating one; default: false.
 #                                                #            One-time switch, set it back to false once the state holds the secret. The plan fails when no
 #                                                #            such secret exists, so leave it false on a fresh deployment. Use it when a destroy left the
@@ -67,7 +67,8 @@
 #                                                #            A point in time restore ignores database_name and master_username — AWS carries both over from
 #                                                #            the source cluster and both are force new, so set settings.database_name and
 #                                                #            settings.master_username to the values the source cluster uses, otherwise every plan after the
-#                                                #            first apply proposes replacing the restored cluster
+#                                                #            first apply proposes replacing the restored cluster. The master password is carried over too,
+#                                                #            so the module generates none and creates no Secrets Manager entry for a clone
 #   s3_import:                                   # (Optional) Seed a new cluster from a database backup stored on S3 (s3_import). aurora-mysql only,
 #                                                #            and mutually exclusive with recovery and clone
 #     enabled: false                             # (Optional) Enable the S3 import; default: false
@@ -159,6 +160,9 @@
 #   cloudwatch:                                   # (Optional) CloudWatch logging
 #     retention_days: 90                          # (Optional) Log retention days; default: 90
 #     retain: true                                # (Optional) Prevent log group destroy on delete; default: true
+#     import: false                               # (Optional) Adopt log groups that already exist under these names instead of creating them; default: false.
+#                                                 #            Emits a Terraform import block for every log group derived from log_exports, so all of them must
+#                                                 #            already exist in CloudWatch or the plan fails. One-time switch, set it back to false once applied
 #     kms_key_id: ""                              # (Optional) KMS key ID or ARN used to encrypt the log groups; default: "" (AWS managed)
 #     kms_key_alias: ""                           # (Optional) KMS key alias used to encrypt the log groups, used only when kms_key_id is not set;
 #                                                 #            "alias/" is added when missing. When neither is set, falls back to the module managed key

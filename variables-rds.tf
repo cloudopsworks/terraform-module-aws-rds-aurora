@@ -32,9 +32,9 @@
 #                                                #            A point in time restore ignores database_name and master_username: AWS carries both over from
 #                                                #            the source cluster, and both are force new. Set settings.database_name and
 #                                                #            settings.master_username to the values the source cluster actually uses, otherwise every plan
-#                                                #            after the first apply proposes replacing the restored cluster. The master password is not
-#                                                #            carried over — the provider applies the module generated one right after the restore, so the
-#                                                #            module managed secret stays accurate
+#                                                #            after the first apply proposes replacing the restored cluster. The master password is carried
+#                                                #            over as well, so the module generates none and creates no Secrets Manager entry for a clone.
+#                                                #            Read the credentials from the source cluster, or set managed_password=true to have AWS own them
 #   # S3 import
 #   s3_import:                                   # (Optional) Seed a new cluster from a database backup stored on S3, mapped to the aws_rds_cluster
 #                                                #            s3_import block. Supported by aurora-mysql only, and mutually exclusive with recovery and clone
@@ -151,8 +151,9 @@
 #   managed_password: true | false                 # (Optional) Delegate the master password to AWS Secrets Manager; default: false. Ignored when migration.enabled=true.
 #                                                  #            When false, the module generates the password and stores it on its own Secrets Manager secret,
 #                                                  #            delivering it to the cluster through the write-only master_password_wo arguments so it never
-#                                                  #            lands in state. No password is generated when migration.enabled or recovery.enabled is true,
-#                                                  #            since the cluster then carries the credentials of its source instance or snapshot
+#                                                  #            lands in state. No password is generated when migration.enabled, recovery.enabled or
+#                                                  #            clone.enabled is true, since the cluster then carries the credentials of its source instance,
+#                                                  #            snapshot or cloned cluster
 #   managed_password_rotation: true | false        # (Optional) Enable rotation for the AWS managed secret; default: false. Only applies when managed_password is true
 #   password_secret_kms_key_id: "arn:aws:kms:..." # (Optional) KMS key ID or alias for the password secret, applied whenever managed_password is true,
 #                                                  #            and to the module managed secret otherwise; default: null (aws/secretsmanager)
@@ -161,7 +162,7 @@
 #                                                  #            DeleteSecret call at destroy time: neither CreateSecret nor UpdateSecret carries a recovery
 #                                                  #            window, so changing it plans a state only diff and alters nothing on the live secret.
 #                                                  #            Silently has no effect wherever the module managed secret is not created, which is whenever
-#                                                  #            managed_password, migration.enabled or recovery.enabled is true, or database_name is null.
+#                                                  #            managed_password, migration.enabled, recovery.enabled or clone.enabled is true, or database_name is null.
 #                                                  #            The secret created for managed_password is owned by RDS through master_user_secret, and
 #                                                  #            aws_rds_cluster exposes no recovery window for it
 #   password_secret_import: true | false           # (Optional) Adopt an existing Secrets Manager secret of the same name instead of creating one; default: false.
@@ -185,6 +186,9 @@
 #   cloudwatch:
 #     retention_days: 90                           # (Optional) Log retention days; default: 90
 #     retain: true | false                         # (Optional) Prevent log group destroy on delete; default: true
+#     import: true | false                         # (Optional) Adopt log groups that already exist under these names instead of creating them; default: false.
+#                                                  #            Emits a Terraform import block for every log group derived from log_exports, so all of them must
+#                                                  #            already exist in CloudWatch or the plan fails. One-time switch, set it back to false once applied
 #     kms_key_id: "arn:aws:kms:..."               # (Optional) KMS key ID or ARN used to encrypt the log groups; default: null (AWS managed)
 #     kms_key_alias: "alias/my-key"               # (Optional) KMS key alias used to encrypt the log groups, used only when kms_key_id is not set;
 #                                                 #            the "alias/" prefix is added when missing. When neither is set, falls back to the module managed
