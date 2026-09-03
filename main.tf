@@ -18,15 +18,17 @@ locals {
 
   migration_enabled = try(var.settings.migration.enabled, false)
   recovery_enabled  = try(var.settings.recovery.enabled, false)
+  clone_enabled     = try(var.settings.clone.enabled, false)
   managed_password  = try(var.settings.managed_password, false)
   # A migration cluster replicates its source and inherits that instance's credentials, so it must
   # not be handed a master password of its own
   manage_master_password = local.managed_password && !local.migration_enabled
   # The module generates and stores the master password only for fresh clusters that do not delegate
-  # the secret to AWS. A snapshot restore carries the master password of the snapshot, and a
-  # migration cluster carries that of its replication source, so generating one in either case would
-  # store a secret that does not match the database.
-  generate_password = !local.managed_password && !local.migration_enabled && !local.recovery_enabled
+  # the secret to AWS. A snapshot restore carries the master password of the snapshot, a point in
+  # time clone that of the cluster it was restored from, and a migration cluster that of its
+  # replication source, so generating one in any of those cases would store a secret that does not
+  # match the database.
+  generate_password = !local.managed_password && !local.migration_enabled && !local.recovery_enabled && !local.clone_enabled
   # settings.database_name may be passed explicitly as null to skip the initial database, which is
   # also what migration requires. try() only substitutes on error, not on null, so local.db_name is
   # null in that case and the secret name cannot be built from it.
@@ -125,7 +127,7 @@ resource "aws_rds_cluster" "this" {
     }
   }
   dynamic "restore_to_point_in_time" {
-    for_each = try(var.settings.clone.enabled, false) ? [1] : []
+    for_each = local.clone_enabled ? [1] : []
     content {
       source_cluster_identifier  = try(var.settings.clone.source_cluster_identifier, null)  # Specify ARN to restore from a different account
       source_cluster_resource_id = try(var.settings.clone.source_cluster_resource_id, null) # To restore Deleted Cluster
